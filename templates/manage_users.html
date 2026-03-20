@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h2>Manage Users</h2>
+        <p class="text-muted">View and manage all users in the system</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Username</th>
+                                <th>Email</th>
+                                <th>Role</th>
+                                <th>Department</th>
+                                <th>Joined</th>
+                                <th>Complaints</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for user in users %}
+                            <tr>
+                                <td>{{ user.id }}</td>
+                                <td>
+                                    <i class="fas fa-user-circle me-1"></i>
+                                    {{ user.username }}
+                                    {% if user.id == current_user.id %}
+                                        <span class="badge bg-primary">You</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ user.email }}</td>
+                                <td>
+                                    {% if user.role == 'admin' %}
+                                        <span class="badge bg-danger">
+                                            <i class="fas fa-crown me-1"></i>Admin
+                                        </span>
+                                    {% elif user.role == 'staff' %}
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-chalkboard-teacher me-1"></i>Staff
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-info">
+                                            <i class="fas fa-user-graduate me-1"></i>Student
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ user.department or 'Not specified' }}</td>
+                                <td>
+                                    {% if user.created_at %}
+                                        {{ user.created_at.strftime('%d-%m-%Y') }}
+                                    {% else %}
+                                        N/A
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="badge bg-primary">{{ user.complaints|length }}</span>
+                                </td>
+                                <td>
+                                    {% if user.id != current_user.id %}
+                                        <div class="btn-group" role="group">
+                                            <button type="button" class="btn btn-sm btn-warning dropdown-toggle" data-bs-toggle="dropdown">
+                                                Change Role
+                                            </button>
+                                            <ul class="dropdown-menu">
+                                                <li>
+                                                    <a class="dropdown-item {% if user.role == 'student' %}active{% endif %}" 
+                                                       href="{{ url_for('change_user_role', user_id=user.id, role='student') }}">
+                                                        <i class="fas fa-user-graduate me-2"></i>Student
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a class="dropdown-item {% if user.role == 'staff' %}active{% endif %}" 
+                                                       href="{{ url_for('change_user_role', user_id=user.id, role='staff') }}">
+                                                        <i class="fas fa-chalkboard-teacher me-2"></i>Staff
+                                                    </a>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    {% else %}
+                                        <span class="text-muted">Current User</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

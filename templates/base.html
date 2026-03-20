@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Complaint Management System</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome 6 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        * {
+            font-family: 'Poppins', sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .navbar {
+            background: white !important;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.1);
+            padding: 10px 0;
+        }
+        
+        .navbar-brand {
+            font-weight: 700;
+            font-size: 1.3rem;
+            color: #667eea !important;
+        }
+        
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            background: #f8f9fa;
+            padding: 5px 15px;
+            border-radius: 40px;
+        }
+        
+        .user-details {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+        }
+        
+        .user-text {
+            line-height: 1.3;
+        }
+        
+        .user-name {
+            font-weight: 600;
+            color: #333;
+            margin: 0;
+            font-size: 0.9rem;
+        }
+        
+        .user-email {
+            color: #666;
+            margin: 0;
+            font-size: 0.8rem;
+        }
+        
+        .user-role-badge {
+            background: #667eea;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            display: inline-block;
+            margin-left: 5px;
+        }
+        
+        .logout-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 30px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .logout-btn:hover {
+            background: #c82333;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(220, 53, 69, 0.3);
+        }
+        
+        .main-content {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            margin: 30px 0;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        
+        .footer {
+            background: white;
+            padding: 20px 0;
+            margin-top: 50px;
+            border-radius: 20px 20px 0 0;
+            text-align: center;
+            color: #666;
+        }
+        
+        .badge {
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-weight: 500;
+        }
+        
+        .table {
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        .table thead th {
+            background: #f8f9fa;
+            color: #333;
+            font-weight: 600;
+            border-bottom: 2px solid #dee2e6;
+        }
+        
+        .btn-group {
+            gap: 5px;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-light">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('index') }}">
+                <i class="fas fa-comment-dots me-2"></i>
+                Complaint Management System
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav mx-auto">
+                    {% if current_user.is_authenticated %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('dashboard') }}">
+                                <i class="fas fa-tachometer-alt me-1"></i>Dashboard
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('new_complaint') }}">
+                                <i class="fas fa-plus-circle me-1"></i>New Complaint
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('view_complaints') }}">
+                                <i class="fas fa-list me-1"></i>My Complaints
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('view_notifications') }}">
+                                <i class="fas fa-bell me-1"></i>Notifications
+                                {% set unread = current_user.notifications|selectattr('is_read', 'equalto', false)|list|length %}
+                                {% if unread > 0 %}
+                                    <span class="badge bg-danger">{{ unread }}</span>
+                                {% endif %}
+                            </a>
+                        </li>
+                        {% if current_user.role == 'admin' %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('manage_users') }}">
+                                <i class="fas fa-users-cog me-1"></i>Manage Users
+                            </a>
+                        </li>
+                        {% endif %}
+                    {% endif %}
+                </ul>
+                
+                {% if current_user.is_authenticated %}
+                <!-- Single user info with logout -->
+                <div class="user-info">
+                    <div class="user-details">
+                        <div class="user-avatar">
+                            {{ current_user.username[0]|upper }}
+                        </div>
+                        <div class="user-text">
+                            <div>
+                                <span class="user-name">{{ current_user.username }}</span>
+                                <span class="user-role-badge">
+                                    {% if current_user.role == 'admin' %}
+                                        <i class="fas fa-crown me-1"></i>Admin
+                                    {% elif current_user.role == 'staff' %}
+                                        <i class="fas fa-chalkboard-teacher me-1"></i>Staff
+                                    {% else %}
+                                        <i class="fas fa-user-graduate me-1"></i>Student
+                                    {% endif %}
+                                </span>
+                            </div>
+                            <div class="user-email">{{ current_user.email }}</div>
+                        </div>
+                    </div>
+                    <a href="{{ url_for('logout') }}" class="logout-btn" 
+                       onclick="return confirm('Are you sure you want to logout?')">
+                        <i class="fas fa-sign-out-alt"></i> Logout
+                    </a>
+                </div>
+                {% else %}
+                <div>
+                    <a href="{{ url_for('login') }}" class="btn btn-outline-primary me-2">Login</a>
+                    <a href="{{ url_for('register') }}" class="btn btn-primary">Register</a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="main-content">
+            {% block content %}{% endblock %}
+        </div>
+    </div>
+
+    <footer class="footer">
+        <div class="container">
+            <p class="mb-0">&copy; 2026 Complaint Management System. All rights reserved.</p>
+            <p class="mb-0 mt-2 small">
+                <i class="fas fa-shield-alt me-1"></i> Secure & Reliable
+                <span class="mx-2">|</span>
+                <i class="fas fa-clock me-1"></i> Real-time Updates
+                <span class="mx-2">|</span>
+                <i class="fas fa-mobile-alt me-1"></i> Mobile Friendly
+            </p>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // Auto-hide alerts after 5 seconds
+        document.addEventListener('DOMContentLoaded', function() {
+            const alerts = document.querySelectorAll('.alert');
+            alerts.forEach(alert => {
+                setTimeout(() => {
+                    alert.style.transition = 'opacity 0.5s ease';
+                    alert.style.opacity = '0';
+                    setTimeout(() => alert.remove(), 500);
+                }, 5000);
+            });
+        });
+    </script>
+    
+    {% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card animate__animated animate__fadeIn">
+            <div class="card-header">
+                <h4 class="mb-0">
+                    <i class="fas fa-plus-circle me-2"></i>
+                    Register New Complaint
+                </h4>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="" class="needs-validation" novalidate>
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="mb-3">
+                        {{ form.title.label(class="form-label fw-bold") }}
+                        <div class="input-group">
+                            <span class="input-group-text bg-light">
+                                <i class="fas fa-heading text-primary"></i>
+                            </span>
+                            {% if form.title.errors %}
+                                {{ form.title(class="form-control is-invalid", placeholder="Brief title of your complaint") }}
+                                <div class="invalid-feedback">
+                                    {% for error in form.title.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                {{ form.title(class="form-control", placeholder="Brief title of your complaint") }}
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            {{ form.category.label(class="form-label fw-bold") }}
+                            <div class="input-group">
+                                <span class="input-group-text bg-light">
+                                    <i class="fas fa-tag text-primary"></i>
+                                </span>
+                                {{ form.category(class="form-select") }}
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            {{ form.priority.label(class="form-label fw-bold") }}
+                            <div class="input-group">
+                                <span class="input-group-text bg-light">
+                                    <i class="fas fa-exclamation-triangle text-primary"></i>
+                                </span>
+                                {{ form.priority(class="form-select") }}
+                            </div>
+                            <small class="text-muted">Select priority based on urgency</small>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.description.label(class="form-label fw-bold") }}
+                        <div class="input-group">
+                            <span class="input-group-text bg-light">
+                                <i class="fas fa-align-left text-primary"></i>
+                            </span>
+                            {% if form.description.errors %}
+                                {{ form.description(class="form-control is-invalid", rows=5, placeholder="Provide detailed description of your complaint") }}
+                                <div class="invalid-feedback">
+                                    {% for error in form.description.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                {{ form.description(class="form-control", rows=5, placeholder="Provide detailed description of your complaint") }}
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <hr class="my-4">
+                    
+                    <div class="d-flex justify-content-between">
+                        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>Cancel
+                        </a>
+                        {{ form.submit(class="btn btn-primary px-5") }}
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block scripts %}
+<script>
+    // Form validation
+    (function() {
+        'use strict';
+        window.addEventListener('load', function() {
+            var forms = document.getElementsByClassName('needs-validation');
+            Array.prototype.filter.call(forms, function(form) {
+                form.addEventListener('submit', function(event) {
+                    if (form.checkValidity() === false) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                    }
+                    form.classList.add('was-validated');
+                }, false);
+            });
+        }, false);
+    })();
+</script>
+{% endblock %}
+{% endblock %}

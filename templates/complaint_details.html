@@ -1,0 +1,322 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">Complaint #{{ complaint.complaint_id }}</h4>
+                    <span class="badge" 
+                        {% if complaint.status == 'pending' %}
+                        style="background-color: #ffc107; color: #000;"
+                        {% elif complaint.status == 'in_progress' %}
+                        style="background-color: #17a2b8; color: #fff;"
+                        {% elif complaint.status == 'resolved' %}
+                        style="background-color: #28a745; color: #fff;"
+                        {% elif complaint.status == 'rejected' %}
+                        style="background-color: #dc3545; color: #fff;"
+                        {% else %}
+                        style="background-color: #6c757d; color: #fff;"
+                        {% endif %}>
+                        {{ complaint.status }}
+                    </span>
+                </div>
+            </div>
+            <div class="card-body">
+                <h5>{{ complaint.title }}</h5>
+                
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <strong>Category:</strong>
+                        <p>{{ complaint.category }}</p>
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Priority:</strong>
+                        <p>
+                            <span class="badge" 
+                                {% if complaint.priority == 'high' %}
+                                style="background-color: #dc3545; color: #fff;"
+                                {% elif complaint.priority == 'medium' %}
+                                style="background-color: #ffc107; color: #000;"
+                                {% else %}
+                                style="background-color: #17a2b8; color: #fff;"
+                                {% endif %}>
+                                {{ complaint.priority }}
+                            </span>
+                        </p>
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Submitted by:</strong>
+                        <p>{{ complaint.author.username }}</p>
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Date:</strong>
+                        <p>{{ complaint.created_at.strftime('%d-%m-%Y %H:%M') }}</p>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <strong>Description:</strong>
+                    <p class="mt-2">{{ complaint.description }}</p>
+                </div>
+                
+                {% if complaint.assigned_to %}
+                    <div class="alert alert-info">
+                        <strong>Assigned to:</strong> {{ complaint.assigned_staff.username }}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Comments Section -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Comments & Updates</h5>
+            </div>
+            <div class="card-body">
+                {% if complaint.comments %}
+                    {% for comment in complaint.comments|sort(attribute='created_at', reverse=true) %}
+                        <div class="comment mb-3 pb-3 border-bottom">
+                            <div class="d-flex justify-content-between">
+                                <strong>{{ comment.user.username }}</strong>
+                                <small class="text-muted">{{ comment.created_at.strftime('%d-%m-%Y %H:%M') }}</small>
+                            </div>
+                            <p class="mt-2">{{ comment.content }}</p>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted">No comments yet.</p>
+                {% endif %}
+                
+                <!-- Add Comment Form -->
+                <form method="POST" action="" class="mt-3">
+                    {{ comment_form.hidden_tag() }}
+                    <div class="mb-3">
+                        {{ comment_form.content.label(class="form-label") }}
+                        {{ comment_form.content(class="form-control", rows=3) }}
+                    </div>
+                    {{ comment_form.submit(class="btn btn-primary") }}
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <!-- Status Update Card (for admin only) -->
+        {% if current_user.role == 'admin' %}
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-edit me-2"></i>Update Complaint
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('complaint_details', complaint_id=complaint.id) }}">
+                    {{ update_form.hidden_tag() }}
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Current Status</label>
+                        <div>
+                            <span class="badge" 
+                                {% if complaint.status == 'pending' %}
+                                style="background-color: #ffc107; color: #000;"
+                                {% elif complaint.status == 'in_progress' %}
+                                style="background-color: #17a2b8; color: #fff;"
+                                {% elif complaint.status == 'resolved' %}
+                                style="background-color: #28a745; color: #fff;"
+                                {% elif complaint.status == 'rejected' %}
+                                style="background-color: #dc3545; color: #fff;"
+                                {% else %}
+                                style="background-color: #6c757d; color: #fff;"
+                                {% endif %}>
+                                {{ complaint.status|upper }}
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Change Status To</label>
+                        <select name="status" class="form-select">
+                            <option value="pending" {% if complaint.status == 'pending' %}selected{% endif %}>Pending</option>
+                            <option value="in_progress" {% if complaint.status == 'in_progress' %}selected{% endif %}>In Progress</option>
+                            <option value="resolved" {% if complaint.status == 'resolved' %}selected{% endif %}>Resolved</option>
+                            <option value="rejected" {% if complaint.status == 'rejected' %}selected{% endif %}>Rejected</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Assign To</label>
+                        <select name="assigned_to" class="form-select">
+                            <option value="0">Unassigned</option>
+                            {% for staff in staff_users %}
+                                <option value="{{ staff.id }}" {% if complaint.assigned_to == staff.id %}selected{% endif %}>
+                                    {{ staff.username }} ({{ staff.email }})
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <button type="submit" name="update_complaint" class="btn btn-primary w-100">
+                        <i class="fas fa-save me-2"></i>Update Complaint
+                    </button>
+                </form>
+                
+                {% if complaint.status != 'resolved' %}
+                <hr>
+                <a href="{{ url_for('resolve_complaint', complaint_id=complaint.id) }}" 
+                   class="btn btn-success w-100"
+                   onclick="return confirm('Mark this complaint as resolved?')">
+                    <i class="fas fa-check-circle me-2"></i> Mark as Resolved
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Delete Complaint Card - Show for resolved or rejected complaints -->
+        {% if complaint.status in ['resolved', 'rejected'] %}
+            {% if current_user.role == 'admin' or 
+                  (current_user.role == 'staff' and complaint.assigned_to == current_user.id) or 
+                  complaint.user_id == current_user.id %}
+                <div class="card mt-3 border-danger">
+                    <div class="card-header bg-danger text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-trash-alt me-2"></i>
+                            {% if complaint.status == 'resolved' %}
+                                Delete Resolved Complaint
+                            {% else %}
+                                Delete Rejected Complaint
+                            {% endif %}
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>This complaint is {{ complaint.status }}.</strong> 
+                            You can delete it to remove it from the system.
+                        </div>
+                        
+                        <p class="text-muted small">
+                            <i class="fas fa-exclamation-triangle text-danger me-1"></i>
+                            Deleting this complaint will permanently remove:
+                        </p>
+                        <ul class="text-muted small mt-1">
+                            <li>The complaint details</li>
+                            <li>All comments ({{ complaint.comments|length }})</li>
+                            <li>All notifications</li>
+                        </ul>
+                        <p class="text-danger small">This action cannot be undone.</p>
+                        
+                        <button type="button" class="btn btn-danger w-100" 
+                                data-bs-toggle="modal" data-bs-target="#deleteModal">
+                            <i class="fas fa-trash-alt me-2"></i>
+                            {% if complaint.status == 'resolved' %}
+                                Delete Resolved Complaint
+                            {% else %}
+                                Delete Rejected Complaint
+                            {% endif %}
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Delete Confirmation Modal -->
+                <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header bg-danger text-white">
+                                <h5 class="modal-title" id="deleteModalLabel">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                    Confirm Deletion
+                                </h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <p>Are you sure you want to delete this <strong>{{ complaint.status }}</strong> complaint?</p>
+                                
+                                <div class="alert alert-secondary">
+                                    <strong>Complaint ID:</strong> {{ complaint.complaint_id }}<br>
+                                    <strong>Title:</strong> {{ complaint.title }}<br>
+                                    <strong>Status:</strong> 
+                                    <span class="badge {% if complaint.status == 'resolved' %}bg-success{% else %}bg-danger{% endif %}">
+                                        {{ complaint.status|capitalize }}
+                                    </span><br>
+                                    <strong>Date:</strong> {{ complaint.created_at.strftime('%d-%m-%Y %H:%M') }}
+                                </div>
+                                
+                                <div class="alert alert-danger">
+                                    <i class="fas fa-exclamation-circle me-2"></i>
+                                    <strong>Warning:</strong> This action is permanent and cannot be undone!
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                    <i class="fas fa-times me-2"></i>Cancel
+                                </button>
+                                <form method="POST" action="{{ url_for('delete_complaint', complaint_id=complaint.id) }}">
+                                    <button type="submit" class="btn btn-danger">
+                                        <i class="fas fa-trash-alt me-2"></i>
+                                        Yes, Permanently Delete
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        {% endif %}
+        
+        <!-- Complaint Info Card -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Complaint Info</h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled">
+                    <li class="mb-2">
+                        <strong>Status:</strong><br>
+                        <span class="badge" 
+                            {% if complaint.status == 'pending' %}
+                            style="background-color: #ffc107; color: #000;"
+                            {% elif complaint.status == 'in_progress' %}
+                            style="background-color: #17a2b8; color: #fff;"
+                            {% elif complaint.status == 'resolved' %}
+                            style="background-color: #28a745; color: #fff;"
+                            {% elif complaint.status == 'rejected' %}
+                            style="background-color: #dc3545; color: #fff;"
+                            {% else %}
+                            style="background-color: #6c757d; color: #fff;"
+                            {% endif %}>
+                            {{ complaint.status }}
+                        </span>
+                    </li>
+                    <li class="mb-2">
+                        <strong>Created:</strong><br>
+                        {{ complaint.created_at.strftime('%d-%m-%Y %H:%M') }}
+                    </li>
+                    <li class="mb-2">
+                        <strong>Last Updated:</strong><br>
+                        {{ complaint.updated_at.strftime('%d-%m-%Y %H:%M') }}
+                    </li>
+                    <li class="mb-2">
+                        <strong>Department:</strong><br>
+                        {{ complaint.author.department or 'N/A' }}
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize tooltips
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+    });
+</script>
+{% endblock %}

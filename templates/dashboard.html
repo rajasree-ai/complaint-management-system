@@ -1,0 +1,318 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex align-items-center">
+            <h2 class="me-3">
+                Welcome, {{ current_user.username }}!
+            </h2>
+            {% if current_user.role == 'student' %}
+                <span class="badge bg-info">
+                    <i class="fas fa-user-graduate me-1"></i> Student
+                </span>
+            {% elif current_user.role == 'staff' %}
+                <span class="badge bg-success">
+                    <i class="fas fa-chalkboard-teacher me-1"></i> Staff
+                </span>
+            {% elif current_user.role == 'admin' %}
+                <span class="badge bg-danger">
+                    <i class="fas fa-crown me-1"></i> Admin
+                </span>
+            {% endif %}
+        </div>
+        <p class="text-muted">
+            <i class="fas fa-building me-1"></i> 
+            Department: {{ current_user.department or 'Not specified' }}
+        </p>
+    </div>
+</div>
+
+<!-- Statistics Cards with Icons -->
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card text-white bg-primary h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title">Total Complaints</h6>
+                        <h2 class="mb-0">{{ stats.total }}</h2>
+                    </div>
+                    <i class="fas fa-file-alt fa-3x opacity-50"></i>
+                </div>
+                <small class="opacity-75">All time complaints</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card text-white bg-warning h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title">Pending</h6>
+                        <h2 class="mb-0">{{ stats.pending }}</h2>
+                    </div>
+                    <i class="fas fa-clock fa-3x opacity-50"></i>
+                </div>
+                <small class="opacity-75">Awaiting review</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card text-white bg-info h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title">In Progress</h6>
+                        <h2 class="mb-0">{{ stats.in_progress }}</h2>
+                    </div>
+                    <i class="fas fa-spinner fa-3x opacity-50"></i>
+                </div>
+                <small class="opacity-75">Being processed</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card text-white bg-success h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title">Resolved</h6>
+                        <h2 class="mb-0">{{ stats.resolved }}</h2>
+                    </div>
+                    <i class="fas fa-check-circle fa-3x opacity-50"></i>
+                </div>
+                <small class="opacity-75">Successfully resolved</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Resolution Rate Card -->
+{% if stats.total > 0 %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card bg-light">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-md-6">
+                        <h5>Resolution Rate</h5>
+                        <div class="progress" style="height: 25px;">
+                            <div class="progress-bar bg-success" 
+                                 style="width: {{ (stats.resolved / stats.total * 100)|round }}%;">
+                                {{ (stats.resolved / stats.total * 100)|round }}% Resolved
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 text-md-end">
+                        <span class="text-muted">
+                            <i class="fas fa-check-circle text-success me-1"></i>
+                            {{ stats.resolved }} of {{ stats.total }} complaints resolved
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-history me-2"></i>Recent Complaints
+                </h5>
+                <a href="{{ url_for('view_complaints') }}" class="btn btn-sm btn-outline-primary">
+                    View All <i class="fas fa-arrow-right ms-1"></i>
+                </a>
+            </div>
+            <div class="card-body">
+                {% if complaints %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Title</th>
+                                    <th>Category</th>
+                                    <th>Status</th>
+                                    <th>Priority</th>
+                                    <th>Date</th>
+                                    <th>Action</th>
+                                 </thead>
+                            <tbody>
+                                {% for complaint in complaints[:5] %}
+                                 <tr>
+                                    <td><span class="badge bg-secondary">{{ complaint.complaint_id }}</span></td>
+                                    <td>{{ complaint.title[:30] }}{% if complaint.title|length > 30 %}...{% endif %}</td>
+                                    <td><span class="badge bg-light text-dark">{{ complaint.category }}</span></td>
+                                    <td>
+                                        {% if complaint.status == 'pending' %}
+                                            <span class="badge" style="background-color: #ffc107; color: #000;">Pending</span>
+                                        {% elif complaint.status == 'in_progress' %}
+                                            <span class="badge" style="background-color: #17a2b8; color: #fff;">In Progress</span>
+                                        {% elif complaint.status == 'resolved' %}
+                                            <span class="badge" style="background-color: #28a745; color: #fff;">Resolved</span>
+                                        {% elif complaint.status == 'rejected' %}
+                                            <span class="badge" style="background-color: #dc3545; color: #fff;">Rejected</span>
+                                        {% else %}
+                                            <span class="badge" style="background-color: #6c757d; color: #fff;">{{ complaint.status }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if complaint.priority == 'high' %}
+                                            <span class="badge" style="background-color: #dc3545; color: #fff;">High</span>
+                                        {% elif complaint.priority == 'medium' %}
+                                            <span class="badge" style="background-color: #ffc107; color: #000;">Medium</span>
+                                        {% else %}
+                                            <span class="badge" style="background-color: #17a2b8; color: #fff;">Low</span>
+                                        {% endif %}
+                                    </td>
+                                    <td><i class="fas fa-calendar-alt me-1 text-muted"></i>{{ complaint.created_at.strftime('%d-%m-%Y') }}</td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <a href="{{ url_for('complaint_details', complaint_id=complaint.id) }}" class="btn btn-sm btn-primary" title="View Details">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-inbox fa-4x text-muted mb-3"></i>
+                        <h5>No Complaints Yet</h5>
+                        <p class="text-muted">You haven't registered any complaints.</p>
+                        <a href="{{ url_for('new_complaint') }}" class="btn btn-primary">
+                            <i class="fas fa-plus me-2"></i>Register Your First Complaint
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-bolt me-2"></i>Quick Actions</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('new_complaint') }}" class="btn btn-primary">
+                        <i class="fas fa-plus me-2"></i> New Complaint
+                    </a>
+                    <a href="{{ url_for('view_complaints') }}" class="btn btn-outline-primary">
+                        <i class="fas fa-list me-2"></i> View All Complaints
+                    </a>
+                    <a href="{{ url_for('view_notifications') }}" class="btn btn-outline-info position-relative">
+                        <i class="fas fa-bell me-2"></i> Notifications
+                        {% if notifications > 0 %}
+                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                                {{ notifications }}
+                            </span>
+                        {% endif %}
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-chart-pie me-2"></i>Complaint Statistics</h5>
+            </div>
+            <div class="card-body">
+                {% if stats.total > 0 %}
+                    <canvas id="complaintChart" width="400" height="300"></canvas>
+                    <div class="mt-3 small">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span><span class="badge" style="background-color: #ffc107;">&nbsp;</span> Pending</span>
+                            <span class="fw-bold">{{ stats.pending }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-1">
+                            <span><span class="badge" style="background-color: #17a2b8;">&nbsp;</span> In Progress</span>
+                            <span class="fw-bold">{{ stats.in_progress }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-1">
+                            <span><span class="badge" style="background-color: #28a745;">&nbsp;</span> Resolved</span>
+                            <span class="fw-bold">{{ stats.resolved }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-1">
+                            <span><span class="badge" style="background-color: #dc3545;">&nbsp;</span> Rejected</span>
+                            <span class="fw-bold">{{ stats.rejected }}</span>
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-chart-line fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">No data to display yet</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="card mt-3 bg-light">
+            <div class="card-body">
+                <h6><i class="fas fa-question-circle text-primary me-2"></i>Need Help?</h6>
+                <p class="small text-muted mb-2">Having trouble with a complaint? Contact our support team.</p>
+                <a href="#" class="btn btn-sm btn-outline-primary w-100">
+                    <i class="fas fa-envelope me-2"></i>Contact Support
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        {% if stats.total > 0 %}
+        var ctx = document.getElementById('complaintChart').getContext('2d');
+        var pending = {{ stats.pending|default(0)|tojson }};
+        var inProgress = {{ stats.in_progress|default(0)|tojson }};
+        var resolved = {{ stats.resolved|default(0)|tojson }};
+        var rejected = {{ stats.rejected|default(0)|tojson }};
+        
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Pending', 'In Progress', 'Resolved', 'Rejected'],
+                datasets: [{
+                    data: [pending, inProgress, resolved, rejected],
+                    backgroundColor: ['#ffc107', '#17a2b8', '#28a745', '#dc3545'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                var label = context.label || '';
+                                var value = context.raw || 0;
+                                var total = context.dataset.data.reduce(function(a, b) {
+                                    return a + b;
+                                }, 0);
+                                var percentage = total > 0 ? Math.round((value / total) * 100) : 0;
+                                return label + ': ' + value + ' (' + percentage + '%)';
+                            }
+                        }
+                    }
+                },
+                cutout: '60%'
+            }
+        });
+        {% endif %}
+    });
+</script>
+{% endblock %}

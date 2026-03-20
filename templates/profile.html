@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Profile Information</h5>
+            </div>
+            <div class="card-body text-center">
+                <i class="fas fa-user-circle fa-5x text-primary mb-3"></i>
+                <h4>{{ user.username }}</h4>
+                <p class="text-muted">{{ user.email }}</p>
+                <hr>
+                <div class="text-start">
+                    <p><strong>Role:</strong> {{ user.role }}</p>
+                    <p><strong>Department:</strong> {{ user.department or 'Not specified' }}</p>
+                    <p><strong>Member since:</strong> {{ user.created_at.strftime('%d-%m-%Y') }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Account Statistics</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h3>{{ user.complaints|length }}</h3>
+                                <p class="text-muted">Total Complaints</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h3>{{ user.complaints|selectattr('status', 'equalto', 'resolved')|list|length }}</h3>
+                                <p class="text-muted">Resolved Complaints</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Recent Activity</h5>
+            </div>
+            <div class="card-body">
+                {% if user.complaints %}
+                    <div class="list-group">
+                        {% for complaint in user.complaints[:5] %}
+                            <a href="{{ url_for('complaint_details', complaint_id=complaint.id) }}" class="list-group-item list-group-item-action">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h6 class="mb-1">{{ complaint.title }}</h6>
+                                    <small>{{ complaint.created_at.strftime('%d-%m-%Y') }}</small>
+                                </div>
+                                <p class="mb-1">Status: <span class="badge badge-{{ complaint.status }}">{{ complaint.status }}</span></p>
+                            </a>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="text-muted">No recent activity.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

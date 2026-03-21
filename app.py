@@ -405,5 +405,77 @@ def change_user_role(user_id, role):
         pass
     
     return redirect(url_for('manage_users'))
+@app.route('/admin/user/<int:user_id>/delete', methods=['POST'])
+@login_required
+def delete_user(user_id):
+    """Delete a user account (admin only)"""
+    if current_user.role != 'admin':
+        abort(403)
+    
+    user = User.query.get_or_404(user_id)
+    
+    # Prevent admin from deleting themselves
+    if user.id == current_user.id:
+        flash('You cannot delete your own account!', 'danger')
+        return redirect(url_for('manage_users'))
+    
+    try:
+        # Store username for flash message
+        username = user.username
+        
+        # Delete all complaints by this user
+        Complaint.query.filter_by(user_id=user.id).delete()
+        
+        # Delete all comments by this user
+        Comment.query.filter_by(user_id=user.id).delete()
+        
+        # Delete all notifications for this user
+        Notification.query.filter_by(user_id=user.id).delete()
+        
+        # Delete the user
+        db.session.delete(user)
+        db.session.commit()
+        
+        flash(f'User "{username}" has been deleted successfully!', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error deleting user: {str(e)}', 'danger')
+    
+    return redirect(url_for('manage_users'))
+
+
+@app.route('/profile/delete', methods=['POST'])
+@login_required
+def delete_own_account():
+    """Allow users to delete their own account"""
+    user = current_user
+    
+    try:
+        username = user.username
+        
+        # Delete all complaints by this user
+        Complaint.query.filter_by(user_id=user.id).delete()
+        
+        # Delete all comments by this user
+        Comment.query.filter_by(user_id=user.id).delete()
+        
+        # Delete all notifications for this user
+        Notification.query.filter_by(user_id=user.id).delete()
+        
+        # Logout the user first
+        logout_user()
+        
+        # Delete the user
+        db.session.delete(user)
+        db.session.commit()
+        
+        flash(f'Your account "{username}" has been deleted successfully!', 'success')
+        return redirect(url_for('index'))
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error deleting account: {str(e)}', 'danger')
+        return redirect(url_for('profile'))
 if __name__ == '__main__':
     app.run(debug=True)

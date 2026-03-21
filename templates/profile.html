@@ -13,9 +13,18 @@
                 <p class="text-muted">{{ user.email }}</p>
                 <hr>
                 <div class="text-start">
-                    <p><strong>Role:</strong> {{ user.role }}</p>
+                    <p><strong>Role:</strong> 
+                        {% if user.role == 'admin' %}
+                            <span class="badge bg-danger">Admin</span>
+                        {% elif user.role == 'staff' %}
+                            <span class="badge bg-success">Staff</span>
+                        {% else %}
+                            <span class="badge bg-info">Student</span>
+                        {% endif %}
+                    </p>
                     <p><strong>Department:</strong> {{ user.department or 'Not specified' }}</p>
                     <p><strong>Member since:</strong> {{ user.created_at.strftime('%d-%m-%Y') }}</p>
+                    <p><strong>Total Complaints:</strong> {{ user.complaints|length }}</p>
                 </div>
             </div>
         </div>
@@ -61,7 +70,17 @@
                                     <h6 class="mb-1">{{ complaint.title }}</h6>
                                     <small>{{ complaint.created_at.strftime('%d-%m-%Y') }}</small>
                                 </div>
-                                <p class="mb-1">Status: <span class="badge badge-{{ complaint.status }}">{{ complaint.status }}</span></p>
+                                <p class="mb-1">Status: 
+                                    {% if complaint.status == 'pending' %}
+                                        <span class="badge bg-warning text-dark">Pending</span>
+                                    {% elif complaint.status == 'in_progress' %}
+                                        <span class="badge bg-info">In Progress</span>
+                                    {% elif complaint.status == 'resolved' %}
+                                        <span class="badge bg-success">Resolved</span>
+                                    {% elif complaint.status == 'rejected' %}
+                                        <span class="badge bg-danger">Rejected</span>
+                                    {% endif %}
+                                </p>
                             </a>
                         {% endfor %}
                     </div>
@@ -70,6 +89,112 @@
                 {% endif %}
             </div>
         </div>
+        
+        <!-- Delete Account Card - Only show for non-admin users -->
+        {% if current_user.role != 'admin' %}
+        <div class="card mt-4 border-danger">
+            <div class="card-header bg-danger text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-exclamation-triangle me-2"></i>Delete Account
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-warning">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>Warning:</strong> Deleting your account is permanent and cannot be undone!
+                </div>
+                <p class="text-muted small">
+                    <i class="fas fa-trash-alt me-1 text-danger"></i>
+                    This will permanently delete:
+                    <ul class="text-muted small mt-1">
+                        <li>Your account information</li>
+                        <li>All your complaints ({{ user.complaints|length }})</li>
+                        <li>All your comments</li>
+                        <li>All your notifications</li>
+                    </ul>
+                </p>
+                <button type="button" class="btn btn-danger w-100" 
+                        data-bs-toggle="modal" data-bs-target="#deleteAccountModal">
+                    <i class="fas fa-trash-alt me-2"></i>Delete My Account
+                </button>
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Delete Account Confirmation Modal -->
+        <div class="modal fade" id="deleteAccountModal" tabindex="-1" aria-labelledby="deleteAccountModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header bg-danger text-white">
+                        <h5 class="modal-title" id="deleteAccountModalLabel">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            Permanently Delete Account
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="text-danger fw-bold">Are you absolutely sure?</p>
+                        <p>This action will permanently delete:</p>
+                        <ul>
+                            <li>Your account ({{ user.username }})</li>
+                            <li>All {{ user.complaints|length }} complaints you've filed</li>
+                            <li>All your comments and notifications</li>
+                        </ul>
+                        <div class="alert alert-warning">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>This action cannot be undone!</strong> You will lose all your data.
+                        </div>
+                        <p>Please type <strong class="text-danger">{{ user.username }}</strong> to confirm:</p>
+                        <input type="text" id="confirmUsername" class="form-control" placeholder="Enter your username">
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                            <i class="fas fa-times me-2"></i>Cancel
+                        </button>
+                        <button type="button" id="confirmDeleteBtn" class="btn btn-danger" disabled>
+                            <i class="fas fa-trash-alt me-2"></i>Yes, Permanently Delete
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Confirm username before deletion
+    document.addEventListener('DOMContentLoaded', function() {
+        const confirmInput = document.getElementById('confirmUsername');
+        const deleteBtn = document.getElementById('confirmDeleteBtn');
+        const expectedUsername = "{{ user.username }}";
+        
+        if (confirmInput && deleteBtn) {
+            confirmInput.addEventListener('input', function() {
+                if (this.value === expectedUsername) {
+                    deleteBtn.disabled = false;
+                } else {
+                    deleteBtn.disabled = true;
+                }
+            });
+            
+            deleteBtn.addEventListener('click', function() {
+                // Submit the delete form
+                fetch("{{ url_for('delete_own_account') }}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                }).then(response => {
+                    if (response.redirected) {
+                        window.location.href = response.url;
+                    }
+                }).catch(error => {
+                    console.error('Error:', error);
+                });
+            });
+        }
+    });
+</script>
 {% endblock %}

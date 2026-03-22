@@ -1,14 +1,21 @@
 import os
 
 class Config:
-    SECRET_KEY = 'your-secret-key-change-this-in-production'
-    SQLALCHEMY_DATABASE_URI = 'sqlite:///complaints.db'
+    SECRET_KEY = os.environ.get('SECRET_KEY', 'dev-secret-key-change-this')
+    
+    # Database - use PostgreSQL if DATABASE_URL exists, otherwise SQLite
+    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL', 'sqlite:///complaints.db')
+    
+    # Fix for PostgreSQL if needed
+    if SQLALCHEMY_DATABASE_URI and SQLALCHEMY_DATABASE_URI.startswith('postgres://'):
+        SQLALCHEMY_DATABASE_URI = SQLALCHEMY_DATABASE_URI.replace('postgres://', 'postgresql://', 1)
+    
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
-    # Email configuration for notifications (using Gmail as example)
-    MAIL_SERVER = 'smtp.gmail.com'
-    MAIL_PORT = 587
-    MAIL_USE_TLS = True
-    MAIL_USERNAME = 'esec196@gmail.com'  # Change this
-    MAIL_PASSWORD = 'ezmn vxgj zmly byye'      # Change this (use app password)
-    MAIL_DEFAULT_SENDER = 'your-email@gmail.com'
+    # Email settings (for notifications)
+    MAIL_SERVER = os.environ.get('MAIL_SERVER', 'smtp.gmail.com')
+    MAIL_PORT = int(os.environ.get('MAIL_PORT', 587))
+    MAIL_USE_TLS = os.environ.get('MAIL_USE_TLS', 'True').lower() == 'true'
+    MAIL_USERNAME = os.environ.get('esec196@gmail.com')
+    MAIL_PASSWORD = os.environ.get('Esec@AI&DS')
+    MAIL_DEFAULT_SENDER = os.environ.get('MAIL_DEFAULT_SENDER')

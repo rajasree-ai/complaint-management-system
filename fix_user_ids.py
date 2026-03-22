@@ -1,28 +1,25 @@
-# fix_user_ids.py
+# manual_fix.py
 from app import app, db
 from models import User
 
-def fix_user_ids():
-    with app.app_context():
-        # Get users ordered by current ID
-        users = User.query.order_by(User.id).all()
+with app.app_context():
+    # Get the second user (ID 5)
+    second_user = User.query.filter_by(username='Rajasree M').first()
+    
+    if second_user and second_user.id != 2:
+        # Update ID to 2
+        db.session.execute(
+            'UPDATE "user" SET id = 2 WHERE id = ?',
+            (second_user.id,)
+        )
         
-        # Get existing user IDs
-        old_ids = [user.id for user in users]
-        
-        # Update each user with new sequential ID
-        for new_id, user in enumerate(users, start=1):
-            old_id = user.id
-            if old_id != new_id:
-                # Direct SQL update for SQLite
-                db.session.execute(
-                    'UPDATE "user" SET id = ? WHERE id = ?',
-                    (new_id, old_id)
-                )
-                print(f"User ID {old_id} → {new_id}")
+        # Update any complaints (if any)
+        db.session.execute(
+            'UPDATE complaint SET user_id = 2 WHERE user_id = ?',
+            (second_user.id,)
+        )
         
         db.session.commit()
-        print("✅ Done! User IDs are now sequential.")
-
-if __name__ == '__main__':
-    fix_user_ids()
+        print(f"Updated {second_user.username} from ID {second_user.id} to 2")
+    
+    print("✅ Done!")

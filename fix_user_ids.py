@@ -5,8 +5,12 @@ from sqlalchemy import text
 
 def fix_user_ids():
     with app.app_context():
+        print("Starting user ID renumbering...")
+        
         # Temporarily disable foreign key checks
-        db.session.execute(text('PRAGMA foreign_keys=OFF'))
+        db.session.execute(text('ALTER TABLE complaint DISABLE TRIGGER ALL;'))
+        db.session.execute(text('ALTER TABLE comment DISABLE TRIGGER ALL;'))
+        db.session.execute(text('ALTER TABLE notification DISABLE TRIGGER ALL;'))
         
         # Get all users ordered by current ID
         users = User.query.order_by(User.id).all()
@@ -19,10 +23,11 @@ def fix_user_ids():
             old_id = user.id
             if old_id != new_id:
                 id_mapping[old_id] = new_id
+                print(f"  User ID {old_id} → {new_id}")
                 
                 # Update user ID
                 db.session.execute(
-                    text('UPDATE user SET id = :new_id WHERE id = :old_id'),
+                    text('UPDATE "user" SET id = :new_id WHERE id = :old_id'),
                     {'new_id': new_id, 'old_id': old_id}
                 )
                 
@@ -49,16 +54,18 @@ def fix_user_ids():
                     text('UPDATE notification SET user_id = :new_id WHERE user_id = :old_id'),
                     {'new_id': new_id, 'old_id': old_id}
                 )
-                
-                print(f"User ID {old_id} -> {new_id}")
             
             new_id += 1
         
         # Re-enable foreign key checks
-        db.session.execute(text('PRAGMA foreign_keys=ON'))
+        db.session.execute(text('ALTER TABLE complaint ENABLE TRIGGER ALL;'))
+        db.session.execute(text('ALTER TABLE comment ENABLE TRIGGER ALL;'))
+        db.session.execute(text('ALTER TABLE notification ENABLE TRIGGER ALL;'))
+        
         db.session.commit()
         
-        print(f"\n✅ Fixed {len(id_mapping)} user IDs. Now IDs are sequential 1,2,3...")
+        print(f"\n✅ Completed! Renumbered {len(id_mapping)} users.")
+        print("Now user IDs are sequential: 1, 2, 3, ...")
 
 if __name__ == '__main__':
     fix_user_ids()

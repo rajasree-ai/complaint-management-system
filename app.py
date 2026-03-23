@@ -405,6 +405,63 @@ def change_user_role(user_id, role):
         pass
     
     return redirect(url_for('manage_users'))
+@app.route('/fix-ids')
+@login_required
+def fix_ids():
+    """Temporary route to fix user IDs - REMOVE AFTER USE"""
+    if current_user.role != 'admin':
+        return "Only admin can access this", 403
+    
+    try:
+        from sqlalchemy import text
+        
+        # Get all users ordered by current ID
+        users = User.query.order_by(User.id).all()
+        fixed_count = 0
+        
+        print(f"Found {len(users)} users")
+        
+        for new_id, user in enumerate(users, start=1):
+            old_id = user.id
+            if old_id != new_id:
+                print(f"Updating {user.username}: ID {old_id} → {new_id}")
+                
+                # Update user ID
+                db.session.execute(
+                    text('UPDATE "user" SET id = :new_id WHERE id = :old_id'),
+                    {'new_id': new_id, 'old_id': old_id}
+                )
+                
+                # Update references in other tables
+                db.session.execute(
+                    text('UPDATE complaint SET user_id = :new_id WHERE user_id = :old_id'),
+                    {'new_id': new_id, 'old_id': old_id}
+                )
+                db.session.execute(
+                    text('UPDATE comment SET user_id = :new_id WHERE user_id = :old_id'),
+                    {'new_id': new_id, 'old_id': old_id}
+                )
+                db.session.execute(
+                    text('UPDATE notification SET user_id = :new_id WHERE user_id = :old_id'),
+                    {'new_id': new_id, 'old_id': old_id}
+                )
+                fixed_count += 1
+        
+        db.session.commit()
+        
+        # Get updated users to display
+        updated_users = User.query.order_by(User.id).all()
+        result = "<h2>✅ IDs Fixed!</h2><ul>"
+        for user in updated_users:
+            result += f"<li>ID {user.id}: {user.username} ({user.email})</li>"
+        result += f"</ul><p>Fixed {fixed_count} users.</p>"
+        result += "<p><a href='/manage_users'>Go to Manage Users</a></p>"
+        
+        return result
+        
+    except Exception as e:
+        db.session.rollback()
+        return f"❌ Error: {str(e)}"
 @app.route('/admin/user/<int:user_id>/delete', methods=['POST'])
 @login_required
 def delete_user(user_id):

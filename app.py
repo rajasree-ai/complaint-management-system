@@ -617,7 +617,7 @@ def execute_fix():
 @app.route('/admin/user/<int:user_id>/delete', methods=['POST'])
 @login_required
 def delete_user(user_id):
-    """Delete a user account (admin only)"""
+    """Delete a user (admin only)"""
     if current_user.role != 'admin':
         abort(403)
     
@@ -628,31 +628,21 @@ def delete_user(user_id):
         flash('You cannot delete your own account!', 'danger')
         return redirect(url_for('manage_users'))
     
+    # Check if user has any complaints
+    if user.complaints:
+        flash(f'Cannot delete user "{user.username}" because they have {len(user.complaints)} complaint(s).', 'danger')
+        return redirect(url_for('manage_users'))
+    
     try:
-        # Store username for flash message
-        username = user.username
-        
-        # Delete all complaints by this user
-        Complaint.query.filter_by(user_id=user.id).delete()
-        
-        # Delete all comments by this user
-        Comment.query.filter_by(user_id=user.id).delete()
-        
-        # Delete all notifications for this user
-        Notification.query.filter_by(user_id=user.id).delete()
-        
         # Delete the user
         db.session.delete(user)
         db.session.commit()
-        
-        flash(f'User "{username}" has been deleted successfully!', 'success')
-        
+        flash(f'User "{user.username}" has been deleted successfully!', 'success')
     except Exception as e:
         db.session.rollback()
         flash(f'Error deleting user: {str(e)}', 'danger')
     
     return redirect(url_for('manage_users'))
-
 
 @app.route('/profile/delete', methods=['POST'])
 @login_required

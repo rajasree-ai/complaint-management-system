@@ -16,6 +16,7 @@
                     <table class="table table-hover">
                         <thead>
                             <tr>
+                                <th>#</th>
                                 <th>ID</th>
                                 <th>Username</th>
                                 <th>Email</th>
@@ -24,10 +25,13 @@
                                 <th>Joined</th>
                                 <th>Complaints</th>
                                 <th>Actions</th>
-                             </thead>
+                            </thead>
                         <tbody>
                             {% for user in users %}
-                            <tr>
+                             <tr>
+                                <td>
+                                    <span class="badge bg-secondary">{{ loop.index }}</span>
+                                </td>
                                 <td>{{ user.id }}</td>
                                 <td>
                                     <i class="fas fa-user-circle me-1"></i>
@@ -55,7 +59,7 @@
                                 <td>{{ user.department or 'Not specified' }}</td>
                                 <td>
                                     {% if user.created_at %}
-                                        {{ user.created_at.strftime('%d-%m-%Y') }}
+                                        {{ user.created_at.strftime('%Y-%m-%d') }}
                                     {% else %}
                                         N/A
                                     {% endif %}
@@ -64,9 +68,8 @@
                                     <span class="badge bg-primary">{{ user.complaints|length }}</span>
                                 </td>
                                 <td>
-                                    <div class="btn-group" role="group">
-                                        <!-- Change Role Dropdown -->
-                                        {% if user.id != current_user.id %}
+                                    {% if user.id != current_user.id %}
+                                        <div class="btn-group" role="group">
                                             <button type="button" class="btn btn-sm btn-warning dropdown-toggle" data-bs-toggle="dropdown">
                                                 Change Role
                                             </button>
@@ -84,61 +87,9 @@
                                                     </a>
                                                 </li>
                                             </ul>
-                                        {% else %}
-                                            <span class="text-muted">Current User</span>
-                                        {% endif %}
-                                        
-                                        <!-- Delete Button - Only for non-admin and not current user -->
-                                        {% if user.role != 'admin' and user.id != current_user.id %}
-                                            <button type="button" 
-                                                    class="btn btn-sm btn-danger" 
-                                                    data-bs-toggle="modal" 
-                                                    data-bs-target="#deleteUserModal{{ user.id }}"
-                                                    title="Delete User">
-                                                <i class="fas fa-trash-alt"></i>
-                                            </button>
-                                        {% endif %}
-                                    </div>
-                                    
-                                    <!-- Delete User Modal -->
-                                    {% if user.role != 'admin' and user.id != current_user.id %}
-                                    <div class="modal fade" id="deleteUserModal{{ user.id }}" tabindex="-1">
-                                        <div class="modal-dialog">
-                                            <div class="modal-content">
-                                                <div class="modal-header bg-danger text-white">
-                                                    <h5 class="modal-title">
-                                                        <i class="fas fa-exclamation-triangle me-2"></i>
-                                                        Delete User Account
-                                                    </h5>
-                                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                                                </div>
-                                                <div class="modal-body">
-                                                    <p>Are you sure you want to delete this user?</p>
-                                                    <div class="alert alert-warning">
-                                                        <strong>User:</strong> {{ user.username }}<br>
-                                                        <strong>Email:</strong> {{ user.email }}<br>
-                                                        <strong>Role:</strong> {{ user.role|capitalize }}<br>
-                                                        <strong>Complaints:</strong> {{ user.complaints|length }}
-                                                    </div>
-                                                    <p class="text-danger">
-                                                        <i class="fas fa-exclamation-circle me-1"></i>
-                                                        <strong>Warning:</strong> This will permanently delete all complaints, comments, and notifications from this user. This action cannot be undone!
-                                                    </p>
-                                                </div>
-                                                <div class="modal-footer">
-                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                                                        <i class="fas fa-times me-2"></i>Cancel
-                                                    </button>
-                                                    <form method="POST" action="{{ url_for('delete_user', user_id=user.id) }}">
-                                                        <button type="submit" class="btn btn-danger">
-                                                            <i class="fas fa-trash-alt me-2"></i>
-                                                            Yes, Delete User
-                                                        </button>
-                                                    </form>
-                                                </div>
-                                            </div>
                                         </div>
-                                    </div>
+                                    {% else %}
+                                        <span class="text-muted">Current User</span>
                                     {% endif %}
                                 </td>
                             </tr>

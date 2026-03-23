@@ -66,31 +66,94 @@
                                     <span class="badge bg-primary">{{ user.complaints|length }}</span>
                                 </td>
                                 <td>
-                                    {% if user.id != current_user.id %}
-                                        <div class="btn-group" role="group">
-                                            <button type="button" class="btn btn-sm btn-warning dropdown-toggle" data-bs-toggle="dropdown">
-                                                Change Role
-                                            </button>
-                                            <ul class="dropdown-menu">
-                                                <li>
-                                                    <a class="dropdown-item {% if user.role == 'student' %}active{% endif %}" 
-                                                       href="{{ url_for('change_user_role', user_id=user.id, role='student') }}">
-                                                        <i class="fas fa-user-graduate me-2"></i>Student
-                                                    </a>
-                                                </li>
-                                                <li>
-                                                    <a class="dropdown-item {% if user.role == 'staff' %}active{% endif %}" 
-                                                       href="{{ url_for('change_user_role', user_id=user.id, role='staff') }}">
-                                                        <i class="fas fa-chalkboard-teacher me-2"></i>Staff
-                                                    </a>
-                                                </li>
-                                            </ul>
+                                    <div class="btn-group" role="group">
+                                        {% if user.id != current_user.id %}
+                                            <div class="btn-group" role="group">
+                                                <button type="button" class="btn btn-sm btn-warning dropdown-toggle" data-bs-toggle="dropdown">
+                                                    Change Role
+                                                </button>
+                                                <ul class="dropdown-menu">
+                                                    <li>
+                                                        <a class="dropdown-item {% if user.role == 'student' %}active{% endif %}" 
+                                                           href="{{ url_for('change_user_role', user_id=user.id, role='student') }}">
+                                                            <i class="fas fa-user-graduate me-2"></i>Student
+                                                        </a>
+                                                    </li>
+                                                    <li>
+                                                        <a class="dropdown-item {% if user.role == 'staff' %}active{% endif %}" 
+                                                           href="{{ url_for('change_user_role', user_id=user.id, role='staff') }}">
+                                                            <i class="fas fa-chalkboard-teacher me-2"></i>Staff
+                                                        </a>
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                            
+                                            <!-- Delete User Button (only if user has no complaints) -->
+                                            {% if user.complaints|length == 0 %}
+                                                <button type="button" 
+                                                        class="btn btn-sm btn-danger ms-1" 
+                                                        data-bs-toggle="modal" 
+                                                        data-bs-target="#deleteUserModal{{ user.id }}"
+                                                        title="Delete User">
+                                                    <i class="fas fa-trash-alt"></i>
+                                                </button>
+                                            {% else %}
+                                                <button type="button" 
+                                                        class="btn btn-sm btn-secondary ms-1" 
+                                                        disabled
+                                                        title="Cannot delete user with complaints">
+                                                    <i class="fas fa-trash-alt"></i>
+                                                </button>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="text-muted">Current User</span>
+                                        {% endif %}
+                                    </div>
+                                    
+                                    <!-- Delete User Modal -->
+                                    {% if user.id != current_user.id and user.complaints|length == 0 %}
+                                    <div class="modal fade" id="deleteUserModal{{ user.id }}" tabindex="-1">
+                                        <div class="modal-dialog">
+                                            <div class="modal-content">
+                                                <div class="modal-header bg-danger text-white">
+                                                    <h5 class="modal-title">
+                                                        <i class="fas fa-exclamation-triangle me-2"></i>
+                                                        Delete User
+                                                    </h5>
+                                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                                </div>
+                                                <div class="modal-body">
+                                                    <p>Are you sure you want to delete user <strong>{{ user.username }}</strong>?</p>
+                                                    
+                                                    <div class="alert alert-warning">
+                                                        <strong>Username:</strong> {{ user.username }}<br>
+                                                        <strong>Email:</strong> {{ user.email }}<br>
+                                                        <strong>Role:</strong> {{ user.role }}<br>
+                                                        <strong>Complaints:</strong> {{ user.complaints|length }}
+                                                    </div>
+                                                    
+                                                    <p class="text-danger">
+                                                        <i class="fas fa-exclamation-circle me-1"></i>
+                                                        <strong>This action cannot be undone!</strong>
+                                                    </p>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                                        <i class="fas fa-times me-2"></i>Cancel
+                                                    </button>
+                                                    <form method="POST" action="{{ url_for('delete_user', user_id=user.id) }}">
+                                                        <button type="submit" class="btn btn-danger">
+                                                            <i class="fas fa-trash-alt me-2"></i>
+                                                            Yes, Delete User
+                                                        </button>
+                                                    </form>
+                                                </div>
+                                            </div>
                                         </div>
-                                    {% else %}
-                                        <span class="text-muted">Current User</span>
+                                    </div>
                                     {% endif %}
                                 </td>
-                            </tr>
+                              </tr>
                             {% endfor %}
                         </tbody>
                     </table>
@@ -99,4 +162,16 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize tooltips
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+    });
+</script>
 {% endblock %}

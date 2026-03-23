@@ -405,6 +405,9 @@ def change_user_role(user_id, role):
         pass
     
     return redirect(url_for('manage_users'))
+@app.route('/test')
+def test():
+    return "✅ App is working! The fix-ids route is available at /fix-ids"
 @app.route('/fix-ids')
 @login_required
 def fix_ids():

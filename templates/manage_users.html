@@ -16,7 +16,6 @@
                     <table class="table table-hover">
                         <thead>
                             <tr>
-                                <th>#</th>
                                 <th>ID</th>
                                 <th>Username</th>
                                 <th>Email</th>
@@ -28,11 +27,10 @@
                             </thead>
                         <tbody>
                             {% for user in users %}
-                             <tr>
+                              <tr>
                                 <td>
                                     <span class="badge bg-secondary">{{ loop.index }}</span>
                                 </td>
-                                <td>{{ user.id }}</td>
                                 <td>
                                     <i class="fas fa-user-circle me-1"></i>
                                     {{ user.username }}

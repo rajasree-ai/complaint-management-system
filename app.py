@@ -463,6 +463,116 @@ def fix_ids():
     except Exception as e:
         db.session.rollback()
         return f"❌ Error: {str(e)}"
+@app.route('/fix-ids-simple')
+@login_required
+def fix_ids_simple():
+    """Simpler approach - shows SQL to run"""
+    if current_user.role != 'admin':
+        return "Only admin can access this", 403
+    
+    # Get current users
+    users = User.query.order_by(User.id).all()
+    
+    result = """
+    <html>
+    <head>
+        <title>Fix User IDs - SQL Method</title>
+        <style>
+            body{font-family:Arial;padding:20px;}
+            pre{background:#f4f4f4;padding:15px;border-radius:5px;overflow-x:auto;}
+            .button{background:#4CAF50;color:white;padding:10px 20px;text-decoration:none;display:inline-block;margin:20px 0;}
+            .warning{background:#ff9800;color:white;padding:10px;border-radius:5px;}
+        </style>
+    </head>
+    <body>
+        <h2>🔧 Fix User IDs - SQL Method</h2>
+        <p>Current users in database:</p>
+        <table border="1" cellpadding="8">
+            <tr><th>Current ID</th><th>Username</th><th>Email</th></tr>
+    """
+    
+    for user in users:
+        result += f"<tr><td>{user.id}</td><td>{user.username}</td><td>{user.email}</td></tr>"
+    
+    result += """
+        </table>
+        <div class="warning">
+            <strong>⚠️ Important:</strong> Since you have existing complaints, we need to update references.
+        </div>
+        <p>Click the button below to fix the IDs (this will also update all complaint references):</p>
+        <a href="/execute-fix" class="button">✅ Fix IDs Now</a>
+        <a href="/admin/users" class="button">Cancel</a>
+    </body>
+    </html>
+    """
+    
+    return result
+
+
+@app.route('/execute-fix')
+@login_required
+def execute_fix():
+    """Execute the actual ID fix"""
+    if current_user.role != 'admin':
+        return "Only admin can access this", 403
+    
+    try:
+        from sqlalchemy import text
+        
+        # Disable triggers temporarily (for PostgreSQL)
+        db.session.execute(text('SET session_replication_role = replica;'))
+        
+        # Get all users
+        users = User.query.order_by(User.id).all()
+        
+        # Create mapping
+        id_map = {}
+        new_id = 1
+        for user in users:
+            id_map[user.id] = new_id
+            new_id += 1
+        
+        # Update all tables
+        for old_id, new_id_val in id_map.items():
+            if old_id != new_id_val:
+                # Update user
+                db.session.execute(
+                    text('UPDATE "user" SET id = :new_id WHERE id = :old_id'),
+                    {'new_id': new_id_val, 'old_id': old_id}
+                )
+                # Update complaint user_id
+                db.session.execute(
+                    text('UPDATE complaint SET user_id = :new_id WHERE user_id = :old_id'),
+                    {'new_id': new_id_val, 'old_id': old_id}
+                )
+                # Update comment user_id
+                db.session.execute(
+                    text('UPDATE comment SET user_id = :new_id WHERE user_id = :old_id'),
+                    {'new_id': new_id_val, 'old_id': old_id}
+                )
+                # Update notification user_id
+                db.session.execute(
+                    text('UPDATE notification SET user_id = :new_id WHERE user_id = :old_id'),
+                    {'new_id': new_id_val, 'old_id': old_id}
+                )
+        
+        # Re-enable triggers
+        db.session.execute(text('SET session_replication_role = origin;'))
+        db.session.commit()
+        
+        # Show result
+        updated_users = User.query.order_by(User.id).all()
+        
+        result = "<html><body><h2 style='color:green'>✅ IDs Fixed Successfully!</h2><table border='1'><tr><th>ID</th><th>Username</th><th>Email</th></tr>"
+        for user in updated_users:
+            result += f"<tr><td>{user.id}</td><td>{user.username}</td><td>{user.email}</td></tr>"
+        result += "</table><br><a href='/admin/users'>Go to Manage Users</a></body></html>"
+        
+        return result
+        
+    except Exception as e:
+        db.session.rollback()
+        return f"<h2 style='color:red'>❌ Error: {str(e)}</h2><a href='/admin/users'>Go back</a>"
 @app.route('/admin/user/<int:user_id>/delete', methods=['POST'])
 @login_required
 def delete_user(user_id):

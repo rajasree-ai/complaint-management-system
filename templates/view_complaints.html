@@ -65,6 +65,7 @@
                         <table class="table table-hover">
                             <thead>
                                 <tr>
+                                    <th>#</th>
                                     <th>Complaint ID</th>
                                     <th>Title</th>
                                     <th>Category</th>
@@ -72,13 +73,15 @@
                                     <th>Priority</th>
                                     <th>Created</th>
                                     <th>Actions</th>
-                                 </tr>
-                            </thead>
+                                 </thead>
                             <tbody>
                                 {% for complaint in complaints %}
-                                <tr>
+                                 <tr>
                                     <td>
-                                        <span class="badge bg-secondary">{{ complaint.complaint_id }}</span>
+                                        <span class="badge bg-secondary">{{ loop.index }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-light text-dark">{{ complaint.complaint_id }}</span>
                                     </td>
                                     <td>{{ complaint.title }}</td>
                                     <td>
@@ -86,27 +89,29 @@
                                     </td>
                                     <td>
                                         {% if complaint.status == 'pending' %}
-                                            <span class="badge bg-warning text-dark">Pending</span>
+                                            <span class="badge" style="background-color: #ffc107; color: #000;">Pending</span>
                                         {% elif complaint.status == 'in_progress' %}
-                                            <span class="badge bg-info">In Progress</span>
+                                            <span class="badge" style="background-color: #17a2b8; color: #fff;">In Progress</span>
                                         {% elif complaint.status == 'resolved' %}
-                                            <span class="badge bg-success">Resolved</span>
+                                            <span class="badge" style="background-color: #28a745; color: #fff;">Resolved</span>
                                         {% elif complaint.status == 'rejected' %}
-                                            <span class="badge bg-danger">Rejected</span>
+                                            <span class="badge" style="background-color: #dc3545; color: #fff;">Rejected</span>
                                         {% endif %}
                                     </td>
                                     <td>
                                         {% if complaint.priority == 'high' %}
-                                            <span class="badge bg-danger">High</span>
+                                            <span class="badge" style="background-color: #dc3545; color: #fff;">High</span>
                                         {% elif complaint.priority == 'medium' %}
-                                            <span class="badge bg-warning text-dark">Medium</span>
+                                            <span class="badge" style="background-color: #ffc107; color: #000;">Medium</span>
                                         {% else %}
-                                            <span class="badge bg-info">Low</span>
+                                            <span class="badge" style="background-color: #17a2b8; color: #fff;">Low</span>
                                         {% endif %}
                                     </td>
-                                    <td>{{ complaint.created_at.strftime('%d-%m-%Y %H:%M') }}</td>
                                     <td>
-                                        <!-- Actions Button Group -->
+                                        <i class="fas fa-calendar-alt me-1 text-muted"></i>
+                                        {{ complaint.created_at.strftime('%d-%m-%Y %H:%M') }}
+                                    </td>
+                                    <td>
                                         <div class="btn-group" role="group">
                                             <a href="{{ url_for('complaint_details', complaint_id=complaint.id) }}" 
                                                class="btn btn-sm btn-info" 
@@ -152,7 +157,7 @@
                                                             <span class="badge {% if complaint.status == 'resolved' %}bg-success{% else %}bg-danger{% endif %}">
                                                                 {{ complaint.status|capitalize }}
                                                             </span><br>
-                                                            <strong>Created:</strong> {{ complaint.created_at.strftime('%d-%m-%Y %H:%M') }}
+                                                            <strong>Created:</strong> {{ complaint.created_at.strftime('%d-%m-%Y') }}
                                                         </div>
                                                         
                                                         <p class="text-danger">
@@ -176,7 +181,7 @@
                                         </div>
                                         {% endif %}
                                     </td>
-                                </tr>
+                                 </tr>
                                 {% endfor %}
                             </tbody>
                         </table>

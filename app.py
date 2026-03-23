@@ -405,7 +405,48 @@ def change_user_role(user_id, role):
         pass
     
     return redirect(url_for('manage_users'))
-
+@app.route('/fix-complaint-ids')
+@login_required
+def fix_complaint_ids():
+    """Temporary route to fix complaint IDs to be sequential"""
+    if current_user.role != 'admin':
+        return "Only admin can access this", 403
+    
+    try:
+        from sqlalchemy import text
+        
+        # Get all complaints ordered by created date
+        complaints = Complaint.query.order_by(Complaint.created_at).all()
+        
+        result = "<html><body><h2>Fixing Complaint IDs...</h2>"
+        result += f"<p>Found {len(complaints)} complaints</p>"
+        
+        fixed_count = 0
+        
+        for idx, complaint in enumerate(complaints, start=1):
+            old_id = complaint.complaint_id
+            new_id = f'ESEC{idx:02d}'
+            
+            if old_id != new_id:
+                # Update the complaint ID
+                db.session.execute(
+                    text('UPDATE complaint SET complaint_id = :new_id WHERE id = :comp_id'),
+                    {'new_id': new_id, 'comp_id': complaint.id}
+                )
+                result += f"<p>Changed: {old_id} → {new_id}</p>"
+                fixed_count += 1
+        
+        db.session.commit()
+        
+        result += f"<h2 style='color:green'>✅ Fixed {fixed_count} complaints!</h2>"
+        result += "<a href='/complaints'>Go to My Complaints</a>"
+        result += "</body></html>"
+        
+        return result
+        
+    except Exception as e:
+        db.session.rollback()
+        return f"<h2 style='color:red'>Error: {str(e)}</h2>"
 @app.route('/fix-ids')
 @login_required
 def fix_ids():
@@ -786,6 +827,7 @@ def renumber_users():
         </body>
         </html>
         """
+    
 @app.route('/test')
 def test():
     return "✅ App is working!"   

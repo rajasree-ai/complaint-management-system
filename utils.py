@@ -6,47 +6,36 @@ from flask_mail import Message
 # Don't import models at the top level to avoid circular imports
 # We'll import inside functions where needed
 
+from models import Complaint
+from sqlalchemy import func
+
 def generate_complaint_id():
     """Generate sequential complaint ID in format ESEC01, ESEC02, etc."""
-    # Import inside function to avoid circular imports
-    from models import Complaint
-    from database import db
+    # Get the highest existing complaint number
+    latest_complaint = Complaint.query.order_by(Complaint.id.desc()).first()
     
-    try:
-        # Get the last complaint from database
-        last_complaint = Complaint.query.order_by(Complaint.id.desc()).first()
-        
-        if last_complaint and last_complaint.complaint_id:
-            # Extract the number from last complaint ID (ESEC01 -> 1)
-            try:
-                # Handle different possible formats
-                complaint_id = last_complaint.complaint_id
-                if complaint_id.startswith('ESEC'):
-                    last_number = int(complaint_id[4:])  # Skip 'ESEC' prefix
-                else:
-                    # If it's in old format, start from 1
-                    last_number = 0
+    if latest_complaint and latest_complaint.complaint_id:
+        # Extract the number from the latest complaint ID (ESEC01 -> 1)
+        try:
+            # Handle both formats: ESEC01 and ESEC001
+            import re
+            match = re.search(r'ESEC(\d+)', latest_complaint.complaint_id)
+            if match:
+                last_number = int(match.group(1))
                 new_number = last_number + 1
-            except (ValueError, IndexError):
-                # If parsing fails, start from 1
+            else:
                 new_number = 1
-        else:
-            # First complaint, start from 1
+        except (ValueError, IndexError):
             new_number = 1
-        
-        # Format with leading zeros (01, 02, 03... up to 99)
-        if new_number <= 99:
-            return f'ESEC{new_number:02d}'
-        else:
-            # For numbers 100 and above, use 3 digits
-            return f'ESEC{new_number:03d}'
-            
-    except Exception as e:
-        print(f"Error generating complaint ID: {e}")
-        # Fallback to timestamp-based ID if something goes wrong
-        timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
-        random_str = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
-        return f'CMP{timestamp}{random_str}'
+    else:
+        # First complaint, start from 1
+        new_number = 1
+    
+    # Format with leading zeros (01, 02, 03...)
+    if new_number <= 99:
+        return f'ESEC{new_number:02d}'
+    else:
+        return f'ESEC{new_number:03d}'
 
 
 def send_email_notification(recipient_email, subject, body, mail):

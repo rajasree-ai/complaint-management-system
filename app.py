@@ -405,9 +405,7 @@ def change_user_role(user_id, role):
         pass
     
     return redirect(url_for('manage_users'))
-@app.route('/test')
-def test():
-    return "✅ App is working! The fix-ids route is available at /fix-ids"
+
 @app.route('/fix-ids')
 @login_required
 def fix_ids():
@@ -537,5 +535,112 @@ def delete_own_account():
         db.session.rollback()
         flash(f'Error deleting account: {str(e)}', 'danger')
         return redirect(url_for('profile'))
+@app.route('/renumber-users')
+@login_required
+def renumber_users():
+    """Temporary route to make user IDs sequential - REMOVE AFTER USE"""
+    if current_user.role != 'admin':
+        return "Only admin can access this", 403
+    
+    try:
+        from sqlalchemy import text
+        
+        # Get all users ordered by current ID
+        users = User.query.order_by(User.id).all()
+        print(f"Found {len(users)} users")
+        
+        # Create mapping of old IDs to new sequential IDs
+        id_mapping = {}
+        new_id = 1
+        fixed_count = 0
+        
+        for user in users:
+            old_id = user.id
+            if old_id != new_id:
+                id_mapping[old_id] = new_id
+                print(f"User {user.username}: ID {old_id} → {new_id}")
+                
+                # Update user ID
+                db.session.execute(
+                    text('UPDATE "user" SET id = :new_id WHERE id = :old_id'),
+                    {'new_id': new_id, 'old_id': old_id}
+                )
+                fixed_count += 1
+            new_id += 1
+        
+        # Now update all references in other tables
+        for old_id, new_id in id_mapping.items():
+            # Update complaints
+            db.session.execute(
+                text('UPDATE complaint SET user_id = :new_id WHERE user_id = :old_id'),
+                {'new_id': new_id, 'old_id': old_id}
+            )
+            # Update comments
+            db.session.execute(
+                text('UPDATE comment SET user_id = :new_id WHERE user_id = :old_id'),
+                {'new_id': new_id, 'old_id': old_id}
+            )
+            # Update notifications
+            db.session.execute(
+                text('UPDATE notification SET user_id = :new_id WHERE user_id = :old_id'),
+                {'new_id': new_id, 'old_id': old_id}
+            )
+        
+        db.session.commit()
+        
+        # Get updated users to display
+        updated_users = User.query.order_by(User.id).all()
+        
+        # Create HTML result
+        result = """
+        <html>
+        <head>
+            <title>Users Renumbered</title>
+            <style>
+                body { font-family: Arial; padding: 20px; }
+                .success { color: green; font-size: 24px; }
+                table { border-collapse: collapse; margin-top: 20px; }
+                th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                th { background-color: #4CAF50; color: white; }
+                .button { background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; display: inline-block; margin-top: 20px; }
+            </style>
+        </head>
+        <body>
+            <h2 class="success">✅ Users Successfully Renumbered!</h2>
+            <p>Fixed <strong>""" + str(fixed_count) + """</strong> user IDs to make them sequential.</p>
+            <h3>Updated Users List:</h3>
+            <table>
+                <tr><th>ID</th><th>Username</th><th>Email</th><th>Role</th></tr>
+        """
+        
+        for user in updated_users:
+            result += f"<tr><td>{user.id}</td><td>{user.username}</td><td>{user.email}</td><td>{user.role}</td></tr>"
+        
+        result += """
+            </table>
+            <br>
+            <a href="/admin/users" class="button">Go to Manage Users</a>
+        </body>
+        </html>
+        """
+        
+        return result
+        
+    except Exception as e:
+        db.session.rollback()
+        return f"""
+        <html>
+        <body>
+            <h2 style="color:red;">❌ Error</h2>
+            <p>Error details: {str(e)}</p>
+            <p>No changes were made to the database.</p>
+            <a href="/admin/users">Go back</a>
+        </body>
+        </html>
+        """
+
+@app.route('/test')
+def test():
+    return "✅ App is working!"   
 if __name__ == '__main__':
     app.run(debug=True)

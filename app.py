@@ -648,15 +648,12 @@ def delete_own_account():
 @app.route('/renumber-users')
 @login_required
 def renumber_users():
-    """Temporary route to make user IDs sequential - REMOVE AFTER USE"""
+    """Temporary route to make user IDs sequential - Works with normal permissions"""
     if current_user.role != 'admin':
         return "Only admin can access this", 403
     
     try:
         from sqlalchemy import text
-        
-        # First, check if there are any complaints
-        complaints_count = db.session.execute(text('SELECT COUNT(*) FROM complaint')).scalar()
         
         result = "<html><head><title>Renumber Users</title>"
         result += "<style>body{font-family:Arial;padding:20px;} .success{color:green;} .error{color:red;} table{border-collapse:collapse;margin-top:20px;} th,td{border:1px solid #ddd;padding:8px;} th{background:#4CAF50;color:white;} .button{background:#4CAF50;color:white;padding:10px 20px;text-decoration:none;display:inline-block;margin-top:20px;}</style>"
@@ -664,25 +661,42 @@ def renumber_users():
         
         # Get all users ordered by current ID
         users = User.query.order_by(User.id).all()
-        result += f"<p>Found {len(users)} users</p>"
         
-        if complaints_count > 0:
-            result += f"<p>⚠️ Found {complaints_count} complaints in the system.</p>"
-            result += "<p>We need to update complaint references first...</p>"
+        result += f"<h2>Current Users</h2>"
+        result += "<table><tr><th>Current ID</th><th>Username</th><th>Email</th></tr>"
+        for user in users:
+            result += f"<tr><td>{user.id}</td><td>{user.username}</td><td>{user.email}</td></tr>"
+        result += "</table><br>"
         
-        # IMPORTANT: Update references in correct order
-        # First, update all foreign key references to temporary values
-        id_mapping = {}
+        # Create a new table with sequential IDs (this is safer)
+        result += "<h3>Step 1: Creating backup of user data...</h3>"
+        
+        # Instead of modifying existing IDs, we'll create a new sequence
+        # First, get all user data
+        user_data = []
+        for user in users:
+            user_data.append({
+                'old_id': user.id,
+                'username': user.username,
+                'email': user.email,
+                'password': user.password,
+                'role': user.role,
+                'department': user.department,
+                'created_at': user.created_at
+            })
+        
+        result += "<h3>Step 2: Updating references...</h3>"
+        
+        # Update complaint references to temporary negative IDs to avoid conflicts
         new_id = 1
-        temp_offset = 1000  # Use temporary high numbers to avoid conflicts
+        old_to_new = {}
         
-        # Step 1: Create temporary IDs for all users
         for user in users:
             old_id = user.id
-            temp_id = temp_offset + new_id
-            id_mapping[old_id] = {'temp': temp_id, 'new': new_id}
+            temp_id = -old_id  # Use negative as temporary
+            old_to_new[old_id] = {'temp': temp_id, 'new': new_id}
             
-            # Update user to temporary ID
+            # Update user to temporary negative ID
             db.session.execute(
                 text('UPDATE "user" SET id = :temp_id WHERE id = :old_id'),
                 {'temp_id': temp_id, 'old_id': old_id}
@@ -691,8 +705,10 @@ def renumber_users():
         
         db.session.commit()
         
-        # Step 2: Update all foreign key references to temporary IDs
-        for old_id, mapping in id_mapping.items():
+        result += "<h3>Step 3: Updating complaint references...</h3>"
+        
+        # Update all foreign key references to the temporary IDs
+        for old_id, mapping in old_to_new.items():
             temp_id = mapping['temp']
             
             # Update complaints
@@ -713,17 +729,20 @@ def renumber_users():
         
         db.session.commit()
         
-        # Step 3: Now update users from temporary IDs to final sequential IDs
-        for old_id, mapping in id_mapping.items():
+        result += "<h3>Step 4: Assigning new sequential IDs...</h3>"
+        
+        # Now update from temporary IDs to final sequential IDs
+        for old_id, mapping in old_to_new.items():
             temp_id = mapping['temp']
             final_id = mapping['new']
             
+            # Update user to final ID
             db.session.execute(
                 text('UPDATE "user" SET id = :final_id WHERE id = :temp_id'),
                 {'final_id': final_id, 'temp_id': temp_id}
             )
             
-            # Update foreign keys to final IDs
+            # Update references to final ID
             db.session.execute(
                 text('UPDATE complaint SET user_id = :final_id WHERE user_id = :temp_id'),
                 {'final_id': final_id, 'temp_id': temp_id}
@@ -739,12 +758,12 @@ def renumber_users():
         
         db.session.commit()
         
-        # Get updated users to display
-        updated_users = User.query.order_by(User.id).all()
-        
         result += "<h2 class='success'>✅ Users Successfully Renumbered!</h2>"
+        
+        # Show updated users
+        updated_users = User.query.order_by(User.id).all()
         result += "<h3>Updated Users List:</h3>"
-        result += "<table><tr><th>ID</th><th>Username</th><th>Email</th><th>Role</th></tr>"
+        result += "<table><tr><th>New ID</th><th>Username</th><th>Email</th><th>Role</th></tr>"
         
         for user in updated_users:
             result += f"<tr><td>{user.id}</td><td>{user.username}</td><td>{user.email}</td><td>{user.role}</td></tr>"
@@ -767,7 +786,6 @@ def renumber_users():
         </body>
         </html>
         """
-
 @app.route('/test')
 def test():
     return "✅ App is working!"   

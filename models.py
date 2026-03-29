@@ -7,12 +7,29 @@ class User(UserMixin, db.Model):
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password = db.Column(db.String(200), nullable=False)
-    role = db.Column(db.String(20), default='user')  # 'user', 'admin', 'staff'
-    department = db.Column(db.String(50))
+    role = db.Column(db.String(20), default='student')  # student, staff/mentor, hod, admin
+    department = db.Column(db.String(100))
+    year = db.Column(db.String(20))
+    section = db.Column(db.String(10))
+    parent_name = db.Column(db.String(100))
+    parent_phone = db.Column(db.String(15))
+    address = db.Column(db.Text)
+    mentor_name = db.Column(db.String(100))  # For students - who is their mentor
+    phone = db.Column(db.String(15))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
+    # Relationships
     complaints = db.relationship('Complaint', backref='author', lazy=True, foreign_keys='Complaint.user_id')
     assigned_complaints = db.relationship('Complaint', backref='assigned_staff', lazy=True, foreign_keys='Complaint.assigned_to')
+
+class Department(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), unique=True, nullable=False)
+    hod_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    hod = db.relationship('User', foreign_keys=[hod_id], backref='managed_department')
+
 
 class Complaint(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -20,17 +37,17 @@ class Complaint(db.Model):
     title = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text, nullable=False)
     category = db.Column(db.String(50), nullable=False)
-    status = db.Column(db.String(20), default='pending')  # pending, in_progress, resolved, rejected
-    priority = db.Column(db.String(20), default='medium')  # low, medium, high
+    status = db.Column(db.String(20), default='pending')
+    priority = db.Column(db.String(20), default='medium')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     assigned_to = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    mentor_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)  # Make sure this exists
     
     comments = db.relationship('Comment', backref='complaint', lazy=True, cascade='all, delete-orphan')
     notifications = db.relationship('Notification', backref='complaint', lazy=True, cascade='all, delete-orphan')
-
 class Comment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     content = db.Column(db.Text, nullable=False)
@@ -41,14 +58,24 @@ class Comment(db.Model):
     
     user = db.relationship('User', backref='comments')
 
+
 class Notification(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     message = db.Column(db.String(200), nullable=False)
-    type = db.Column(db.String(50), default='status_update')  # status_update, comment, assignment
+    type = db.Column(db.String(50), default='status_update')
     is_read = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    complaint_id = db.Column(db.Integer, db.ForeignKey('complaint.id'), nullable=False)
+    complaint_id = db.Column(db.Integer, db.ForeignKey('complaint.id'), nullable=True)
     
     user = db.relationship('User', backref='notifications')
+
+
+class PasswordResetOTP(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(120), nullable=False)
+    otp = db.Column(db.String(6), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    expires_at = db.Column(db.DateTime, nullable=False)
+    is_used = db.Column(db.Boolean, default=False)

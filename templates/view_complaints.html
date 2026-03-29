@@ -114,21 +114,29 @@
                                                 <i class="fas fa-eye"></i>
                                             </a>
                                             
-                                            <!-- Delete button for resolved or rejected complaints -->
-                                            {% if complaint.status in ['resolved', 'rejected'] %}
-                                                {% if current_user.role == 'admin' or 
-                                                      (current_user.role == 'staff' and complaint.assigned_to == current_user.id) or 
-                                                      complaint.user_id == current_user.id %}
-                                                    <button type="button" 
-                                                            class="btn btn-sm btn-danger" 
-                                                            data-bs-toggle="modal" 
-                                                            data-bs-target="#deleteModal{{ complaint.id }}"
-                                                            title="Delete {{ complaint.status|capitalize }} Complaint">
-                                                        <i class="fas fa-trash-alt"></i>
-                                                    </button>
-                                                {% endif %}
-                                            {% endif %}
-                                        </div>
+                                       <td>
+    <div class="btn-group" role="group">
+        <a href="{{ url_for('complaint_details', complaint_id=complaint.id) }}" 
+           class="btn btn-sm btn-info" title="View Details">
+            <i class="fas fa-eye"></i>
+        </a>
+        
+        <!-- Delete button for resolved or rejected complaints -->
+        {% if complaint.status in ['resolved', 'rejected'] %}
+            {% if is_super_admin(current_user) or 
+                  (is_department_admin(current_user) and complaint.author.department == current_user.department) or 
+                  complaint.user_id == current_user.id %}
+                <form method="POST" action="{{ url_for('delete_complaint', complaint_id=complaint.id) }}" 
+                      style="display: inline;"
+                      onsubmit="return confirm('Delete this {{ complaint.status }} complaint? This cannot be undone!');">
+                    <button type="submit" class="btn btn-sm btn-danger" title="Delete Complaint">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                </form>
+            {% endif %}
+        {% endif %}
+    </div>
+</td>     
                                         
                                         <!-- Delete Modal for this complaint -->
                                         {% if complaint.status in ['resolved', 'rejected'] %}

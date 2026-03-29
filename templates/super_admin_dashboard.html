@@ -1,0 +1,200 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h2><i class="fas fa-crown me-2 text-warning"></i>Super Admin Dashboard</h2>
+                <p class="text-muted">Welcome, {{ current_user.username }}! You have full access to all departments.</p>
+            </div>
+            <div class="card bg-warning text-dark">
+                <div class="card-body py-2 px-3">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-user-shield fa-2x me-3"></i>
+                        <div>
+                            <small>Logged in as</small>
+                            <h5 class="mb-0">{{ current_user.username }}</h5>
+                            <small>Super Administrator</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Stats Cards -->
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card text-white bg-primary h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-file-alt fa-3x mb-2 opacity-75"></i>
+                <h6 class="card-title">Total Complaints</h6>
+                <h2 class="mb-0">{{ stats.total }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card text-white bg-warning h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-clock fa-3x mb-2 opacity-75"></i>
+                <h6 class="card-title">Pending</h6>
+                <h2 class="mb-0">{{ stats.pending }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card text-white bg-info h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-spinner fa-3x mb-2 opacity-75"></i>
+                <h6 class="card-title">In Progress</h6>
+                <h2 class="mb-0">{{ stats.in_progress }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card text-white bg-success h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-check-circle fa-3x mb-2 opacity-75"></i>
+                <h6 class="card-title">Resolved</h6>
+                <h2 class="mb-0">{{ stats.resolved }}</h2>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-list me-2"></i>Recent Complaints</h5>
+                <a href="{{ url_for('view_complaints') }}" class="btn btn-sm btn-outline-primary">View All</a>
+            </div>
+            <div class="card-body">
+                {% if recent_complaints %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Student</th>
+                                    <th>Department</th>
+                                    <th>Title</th>
+                                    <th>Status</th>
+                                    <th>Priority</th>
+                                    <th>Date</th>
+                                    <th>Action</th>
+                                 </thead>
+                            <tbody>
+                                {% for complaint in recent_complaints %}
+                                <tr>
+                                    <td><span class="badge bg-secondary">{{ complaint.complaint_id }}</span></td>
+                                    <td><i class="fas fa-user-graduate me-1"></i>{{ complaint.author.username }}</td>
+                                    <td>{{ complaint.author.department }}</td>
+                                    <td>{{ complaint.title[:40] }}{% if complaint.title|length > 40 %}...{% endif %}</td>
+                                    <td>
+                                        {% if complaint.status == 'pending' %}
+                                            <span class="badge bg-warning text-dark">Pending</span>
+                                        {% elif complaint.status == 'in_progress' %}
+                                            <span class="badge bg-info">In Progress</span>
+                                        {% elif complaint.status == 'resolved' %}
+                                            <span class="badge bg-success">Resolved</span>
+                                        {% elif complaint.status == 'rejected' %}
+                                            <span class="badge bg-danger">Rejected</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if complaint.priority == 'high' %}
+                                            <span class="badge bg-danger">High</span>
+                                        {% elif complaint.priority == 'medium' %}
+                                            <span class="badge bg-warning text-dark">Medium</span>
+                                        {% else %}
+                                            <span class="badge bg-info">Low</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ complaint.created_at.strftime('%d-%m-%Y') }}</td>
+                                    <td>
+                                        <a href="{{ url_for('complaint_details', complaint_id=complaint.id) }}" class="btn btn-sm btn-primary">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                    </td>
+                                 </tr>
+                                {% endfor %}
+                            </tbody>
+                         </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-inbox fa-4x text-muted mb-3"></i>
+                        <h5>No Complaints Yet</h5>
+                        <p class="text-muted">There are no complaints in the system.</p>
+                        <p>Students need to register and create complaints.</p>
+                        <a href="{{ url_for('register') }}" class="btn btn-primary mt-2">Register New Student</a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-chart-pie me-2"></i>Complaint Statistics</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="complaintChart" height="200"></canvas>
+                <div class="mt-3 small">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span><span class="badge" style="background-color: #ffc107;">&nbsp;</span> Pending</span>
+                        <span class="fw-bold">{{ stats.pending }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-1">
+                        <span><span class="badge" style="background-color: #17a2b8;">&nbsp;</span> In Progress</span>
+                        <span class="fw-bold">{{ stats.in_progress }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-1">
+                        <span><span class="badge" style="background-color: #28a745;">&nbsp;</span> Resolved</span>
+                        <span class="fw-bold">{{ stats.resolved }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-1">
+                        <span><span class="badge" style="background-color: #dc3545;">&nbsp;</span> Rejected</span>
+                        <span class="fw-bold">{{ stats.rejected }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var ctx = document.getElementById('complaintChart').getContext('2d');
+        var pending = {{ stats.pending|default(0)|tojson }};
+        var inProgress = {{ stats.in_progress|default(0)|tojson }};
+        var resolved = {{ stats.resolved|default(0)|tojson }};
+        var rejected = {{ stats.rejected|default(0)|tojson }};
+        
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Pending', 'In Progress', 'Resolved', 'Rejected'],
+                datasets: [{
+                    data: [pending, inProgress, resolved, rejected],
+                    backgroundColor: ['#ffc107', '#17a2b8', '#28a745', '#dc3545'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: { legend: { display: false } },
+                cutout: '60%'
+            }
+        });
+    });
+</script>
+{% endblock %}

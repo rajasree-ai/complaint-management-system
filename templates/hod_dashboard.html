@@ -1,0 +1,256 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h2><i class="fas fa-building me-2"></i>{{ department }} Department</h2>
+                <p class="text-muted">Department Admin Dashboard - Full access to your department</p>
+            </div>
+            <div class="card bg-primary text-white">
+                <div class="card-body py-2 px-3">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-user-tie fa-2x me-3"></i>
+                        <div>
+                            <small>Welcome,</small>
+                            <h5 class="mb-0">{{ current_user.username }}</h5>
+                            <small>Head of Department (Department Admin)</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Department Statistics Cards -->
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card text-white bg-primary h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-users fa-3x mb-2 opacity-75"></i>
+                <h6 class="card-title">Total Students</h6>
+                <h2 class="mb-0">{{ total_students }}</h2>
+                <small>in {{ department }}</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card text-white bg-info h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-chalkboard-teacher fa-3x mb-2 opacity-75"></i>
+                <h6 class="card-title">Total Staff</h6>
+                <h2 class="mb-0">{{ total_staff }}</h2>
+                <small>in {{ department }}</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card text-white bg-warning h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-clock fa-3x mb-2 opacity-75"></i>
+                <h6 class="card-title">Pending Complaints</h6>
+                <h2 class="mb-0">{{ pending_complaints }}</h2>
+                <small>awaiting action</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card text-white bg-success h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-check-circle fa-3x mb-2 opacity-75"></i>
+                <h6 class="card-title">Resolved Complaints</h6>
+                <h2 class="mb-0">{{ resolved_complaints }}</h2>
+                <small>completed</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-7">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-list me-2"></i>Recent Complaints ({{ department }})</h5>
+                <a href="{{ url_for('view_complaints') }}" class="btn btn-sm btn-outline-primary">View All</a>
+            </div>
+            <div class="card-body">
+                {% if complaints %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Student</th>
+                                    <th>Title</th>
+                                    <th>Status</th>
+                                    <th>Priority</th>
+                                    <th>Date</th>
+                                    <th>Action</th>
+                                 </thead>
+                            <tbody>
+                                {% for complaint in complaints[:8] %}
+                                <tr>
+                                    <td><span class="badge bg-secondary">{{ complaint.complaint_id }}</span></td>
+                                    <td><i class="fas fa-user-graduate me-1"></i>{{ complaint.author.username }}</td>
+                                    <td>{{ complaint.title[:35] }}{% if complaint.title|length > 35 %}...{% endif %}</td>
+                                    <td>
+                                        {% if complaint.status == 'pending' %}
+                                            <span class="badge bg-warning text-dark">Pending</span>
+                                        {% elif complaint.status == 'in_progress' %}
+                                            <span class="badge bg-info">In Progress</span>
+                                        {% elif complaint.status == 'resolved' %}
+                                            <span class="badge bg-success">Resolved</span>
+                                        {% elif complaint.status == 'rejected' %}
+                                            <span class="badge bg-danger">Rejected</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if complaint.priority == 'high' %}
+                                            <span class="badge bg-danger">High</span>
+                                        {% elif complaint.priority == 'medium' %}
+                                            <span class="badge bg-warning text-dark">Medium</span>
+                                        {% else %}
+                                            <span class="badge bg-info">Low</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ complaint.created_at.strftime('%d-%m-%Y') }}</td>
+                                    <td>
+                                        <a href="{{ url_for('complaint_details', complaint_id=complaint.id) }}" 
+                                           class="btn btn-sm btn-primary">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                    </td>
+                                 </tr>
+                                {% endfor %}
+                            </tbody>
+                         </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted text-center py-4">No complaints in your department yet.</p>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Staff Assignments Card - NOW INSIDE THE ROW -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5><i class="fas fa-user-tie me-2"></i>Staff Assignments</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% for s in staff %}
+                    <div class="col-md-6 mb-2">
+                        <div class="card bg-light">
+                            <div class="card-body py-2">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <i class="fas fa-chalkboard-teacher me-2 text-success"></i>
+                                        <strong>{{ s.username }}</strong>
+                                        <br>
+                                        <small class="text-muted">Assigned: {{ s.assigned_complaints|length }} complaints</small>
+                                    </div>
+                                    <a href="{{ url_for('view_complaints') }}?assigned_to={{ s.id }}" class="btn btn-sm btn-outline-primary">
+                                        View Assigned
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="mt-2">
+                    <a href="{{ url_for('add_department_staff') }}" class="btn btn-sm btn-outline-primary">
+                        <i class="fas fa-plus me-1"></i>Add New Staff/Mentor
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-5">
+        <!-- Department Students Card -->
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-user-graduate me-2"></i>Students ({{ total_students }})</h5>
+                <a href="{{ url_for('department_users') }}" class="btn btn-sm btn-outline-primary">Manage</a>
+            </div>
+            <div class="card-body">
+                <div class="list-group">
+                    {% for student in students[:5] %}
+                        <div class="list-group-item">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <i class="fas fa-user-circle me-2"></i>
+                                    <strong>{{ student.username }}</strong>
+                                    <br>
+                                    <small class="text-muted">{{ student.email }}</small>
+                                    <br>
+                                    <small>{{ student.year }}, Section {{ student.section }}</small>
+                                </div>
+                                <span class="badge bg-primary">{{ student.complaints|length }} complaints</span>
+                            </div>
+                        </div>
+                    {% else %}
+                        <p class="text-muted">No students in this department.</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Statistics Chart -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-chart-pie me-2"></i>Complaint Distribution</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="complaintChart" height="200"></canvas>
+                <div class="mt-3">
+                    <div class="d-flex justify-content-between">
+                        <span><i class="fas fa-circle text-warning me-1"></i> Pending: {{ stats.pending }}</span>
+                        <span><i class="fas fa-circle text-info me-1"></i> In Progress: {{ stats.in_progress }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between mt-1">
+                        <span><i class="fas fa-circle text-success me-1"></i> Resolved: {{ stats.resolved }}</span>
+                        <span><i class="fas fa-circle text-danger me-1"></i> Rejected: {{ stats.rejected }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var ctx = document.getElementById('complaintChart').getContext('2d');
+        var pending = {{ stats.pending|default(0)|tojson }};
+        var inProgress = {{ stats.in_progress|default(0)|tojson }};
+        var resolved = {{ stats.resolved|default(0)|tojson }};
+        var rejected = {{ stats.rejected|default(0)|tojson }};
+        
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Pending', 'In Progress', 'Resolved', 'Rejected'],
+                datasets: [{
+                    data: [pending, inProgress, resolved, rejected],
+                    backgroundColor: ['#ffc107', '#17a2b8', '#28a745', '#dc3545'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { display: false }
+                },
+                cutout: '60%'
+            }
+        });
+    });
+</script>
+{% endblock %}

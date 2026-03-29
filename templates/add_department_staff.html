@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h4 class="mb-0"><i class="fas fa-user-plus me-2"></i>Add Staff/Mentor to {{ department }}</h4>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label class="form-label">Username</label>
+                        <input type="text" name="username" class="form-control" required>
+                        <small class="text-muted">Username must be unique</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Email</label>
+                        <input type="email" name="email" class="form-control" required>
+                        <small class="text-muted">Email will be used for login and notifications</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Password</label>
+                        <input type="password" name="password" class="form-control" required>
+                        <small class="text-muted">Password must be at least 6 characters</small>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-success w-100">
+                        <i class="fas fa-user-plus me-2"></i>Add Staff Member
+                    </button>
+                </form>
+            </div>
+        </div>
+        
+        <div class="card mt-3 bg-light">
+            <div class="card-body">
+                <h6 class="card-title"><i class="fas fa-info-circle me-2"></i>Staff/Mentor Responsibilities</h6>
+                <ul class="small mb-0">
+                    <li>View and manage complaints assigned to them</li>
+                    <li>Update complaint status</li>
+                    <li>Add comments to complaints</li>
+                    <li>Delete resolved or rejected complaints</li>
+                    <li>Mentor students in their department</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

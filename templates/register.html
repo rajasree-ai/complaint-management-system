@@ -2,85 +2,101 @@
 
 {% block content %}
 <div class="row justify-content-center">
-    <div class="col-md-6">
+    <div class="col-md-8">
         <div class="card">
-            <div class="card-header">
-                <h4 class="mb-0">Register</h4>
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0"><i class="fas fa-user-plus me-2"></i>Student Registration</h4>
             </div>
             <div class="card-body">
-                <form method="POST" action="">
+                <form method="POST">
                     {{ form.hidden_tag() }}
                     
-                    <div class="mb-3">
-                        {{ form.username.label(class="form-label") }}
-                        {% if form.username.errors %}
-                            {{ form.username(class="form-control is-invalid") }}
-                            <div class="invalid-feedback">
-                                {% for error in form.username.errors %}
-                                    {{ error }}
-                                {% endfor %}
-                            </div>
-                        {% else %}
-                            {{ form.username(class="form-control") }}
-                        {% endif %}
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            {{ form.username.label(class="form-label") }}
+                            {{ form.username(class="form-control", placeholder="Username") }}
+                            {% if form.username.errors %}
+                                <div class="text-danger small">{{ form.username.errors[0] }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            {{ form.email.label(class="form-label") }}
+                            {{ form.email(class="form-control", placeholder="Email") }}
+                            {% if form.email.errors %}
+                                <div class="text-danger small">{{ form.email.errors[0] }}</div>
+                            {% endif %}
+                        </div>
                     </div>
                     
-                    <div class="mb-3">
-                        {{ form.email.label(class="form-label") }}
-                        {% if form.email.errors %}
-                            {{ form.email(class="form-control is-invalid") }}
-                            <div class="invalid-feedback">
-                                {% for error in form.email.errors %}
-                                    {{ error }}
-                                {% endfor %}
-                            </div>
-                        {% else %}
-                            {{ form.email(class="form-control") }}
-                        {% endif %}
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            {{ form.password.label(class="form-label") }}
+                            {{ form.password(class="form-control", placeholder="Password") }}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            {{ form.confirm_password.label(class="form-label") }}
+                            {{ form.confirm_password(class="form-control", placeholder="Confirm Password") }}
+                        </div>
                     </div>
                     
-                    <div class="mb-3">
-                        {{ form.password.label(class="form-label") }}
-                        {% if form.password.errors %}
-                            {{ form.password(class="form-control is-invalid") }}
-                            <div class="invalid-feedback">
-                                {% for error in form.password.errors %}
-                                    {{ error }}
-                                {% endfor %}
-                            </div>
-                        {% else %}
-                            {{ form.password(class="form-control") }}
-                        {% endif %}
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            {{ form.department.label(class="form-label") }}
+                            {{ form.department(class="form-select") }}
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            {{ form.year.label(class="form-label") }}
+                            {{ form.year(class="form-select") }}
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            {{ form.section.label(class="form-label") }}
+                            {{ form.section(class="form-select") }}
+                        </div>
                     </div>
                     
-                    <div class="mb-3">
-                        {{ form.confirm_password.label(class="form-label") }}
-                        {% if form.confirm_password.errors %}
-                            {{ form.confirm_password(class="form-control is-invalid") }}
-                            <div class="invalid-feedback">
-                                {% for error in form.confirm_password.errors %}
-                                    {{ error }}
-                                {% endfor %}
-                            </div>
-                        {% else %}
-                            {{ form.confirm_password(class="form-control") }}
-                        {% endif %}
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            {{ form.phone.label(class="form-label") }}
+                            {{ form.phone(class="form-control", placeholder="Mobile Number") }}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            {{ form.parent_name.label(class="form-label") }}
+                            {{ form.parent_name(class="form-control", placeholder="Parent/Guardian Name") }}
+                        </div>
                     </div>
                     
-                    <div class="mb-3">
-                        {{ form.department.label(class="form-label") }}
-                        {{ form.department(class="form-control") }}
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            {{ form.parent_phone.label(class="form-label") }}
+                            {{ form.parent_phone(class="form-control", placeholder="Parent Phone") }}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            {{ form.address.label(class="form-label") }}
+                            {{ form.address(class="form-control", rows=1, placeholder="Address") }}
+                        </div>
                     </div>
                     
-                    <div class="mb-3">
-                        {{ form.submit(class="btn btn-primary") }}
-                    </div>
+                    {{ form.submit(class="btn btn-primary w-100") }}
                 </form>
-                <div class="border-top pt-3">
-                    <small class="text-muted">
-                        Already have an account? <a href="{{ url_for('login') }}">Sign in</a>
-                    </small>
+                <hr class="my-4">
+                <div class="text-center">
+                    <p class="text-muted mb-0">Already have an account?</p>
+                    <a href="{{ url_for('login') }}" class="btn btn-outline-primary w-100 mt-2">
+                        <i class="fas fa-sign-in-alt me-2"></i>Login Here
+                    </a>
                 </div>
+            </div>
+        </div>
+        
+        <div class="card mt-3 bg-light">
+            <div class="card-body">
+                <h6 class="card-title"><i class="fas fa-info-circle me-2"></i>Registration Information</h6>
+                <ul class="small mb-0">
+                    <li>All fields are required for student registration</li>
+                    <li>Your department determines which HOD will handle your complaints</li>
+                    <li>Parent/Guardian details are for emergency contact purposes</li>
+                    <li>You can select a mentor while submitting complaints</li>
+                </ul>
             </div>
         </div>
     </div>

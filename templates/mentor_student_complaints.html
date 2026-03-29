@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h2><i class="fas fa-user-graduate me-2"></i>Student Complaints</h2>
+                <p class="text-muted">
+                    Managing complaints for <strong>{{ student.username }}</strong> ({{ student.email }}) - 
+                    {{ student.year }}, Section {{ student.section }}
+                </p>
+            </div>
+            <div>
+                <a href="{{ url_for('mentor_students') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Students
+                </a>
+                <a href="{{ url_for('new_complaint') }}" class="btn btn-primary ms-2">
+                    <i class="fas fa-plus me-2"></i>Create Complaint for Student
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Student Statistics -->
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card text-white bg-primary h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-file-alt fa-3x mb-2 opacity-75"></i>
+                <h6 class="card-title">Total Complaints</h6>
+                <h2 class="mb-0">{{ stats.total }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card text-white bg-warning h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-clock fa-3x mb-2 opacity-75"></i>
+                <h6 class="card-title">Pending</h6>
+                <h2 class="mb-0">{{ stats.pending }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card text-white bg-info h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-spinner fa-3x mb-2 opacity-75"></i>
+                <h6 class="card-title">In Progress</h6>
+                <h2 class="mb-0">{{ stats.in_progress }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card text-white bg-success h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-check-circle fa-3x mb-2 opacity-75"></i>
+                <h6 class="card-title">Resolved</h6>
+                <h2 class="mb-0">{{ stats.resolved }}</h2>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-list me-2"></i>Complaints by {{ student.username }}</h5>
+            </div>
+            <div class="card-body">
+                {% if complaints %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Title</th>
+                                    <th>Category</th>
+                                    <th>Status</th>
+                                    <th>Priority</th>
+                                    <th>Assigned To</th>
+                                    <th>Date</th>
+                                    <th>Actions</th>
+                                 </thead>
+                            <tbody>
+                                {% for complaint in complaints %}
+                                 <tr>
+                                     <td><span class="badge bg-secondary">{{ complaint.complaint_id }}</span> \)
+                                     <td>{{ complaint.title }} \)
+                                     <td><span class="badge bg-light text-dark">{{ complaint.category }}</span> \)
+                                     <td>
+                                        {% if complaint.status == 'pending' %}
+                                            <span class="badge bg-warning text-dark">Pending</span>
+                                        {% elif complaint.status == 'in_progress' %}
+                                            <span class="badge bg-info">In Progress</span>
+                                        {% elif complaint.status == 'resolved' %}
+                                            <span class="badge bg-success">Resolved</span>
+                                        {% elif complaint.status == 'rejected' %}
+                                            <span class="badge bg-danger">Rejected</span>
+                                        {% endif %}
+                                      </td>
+                                      <td>
+                                        {% if complaint.priority == 'high' %}
+                                            <span class="badge bg-danger">High</span>
+                                        {% elif complaint.priority == 'medium' %}
+                                            <span class="badge bg-warning text-dark">Medium</span>
+                                        {% else %}
+                                            <span class="badge bg-info">Low</span>
+                                        {% endif %}
+                                      </td>
+                                      <td>
+                                        {% if complaint.assigned_staff %}
+                                            <span class="badge bg-success">{{ complaint.assigned_staff.username }}</span>
+                                        {% else %}
+                                            <span class="text-muted">Not assigned</span>
+                                        {% endif %}
+                                      </td>
+                                      <td>{{ complaint.created_at.strftime('%d-%m-%Y') }} </td>
+                                      <td>
+                                        <div class="btn-group">
+                                            <a href="{{ url_for('complaint_details', complaint_id=complaint.id) }}" 
+                                               class="btn btn-sm btn-primary">
+                                                <i class="fas fa-eye"></i> View
+                                            </a>
+                                            {% if complaint.status != 'resolved' %}
+                                            <a href="{{ url_for('resolve_complaint', complaint_id=complaint.id) }}" 
+                                               class="btn btn-sm btn-success"
+                                               onclick="return confirm('Mark this complaint as resolved?')">
+                                                <i class="fas fa-check"></i> Resolve
+                                            </a>
+                                            {% endif %}
+                                        </div>
+                                      </td>
+                                 </tr>
+                                {% endfor %}
+                            </tbody>
+                         </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-inbox fa-4x text-muted mb-3"></i>
+                        <h5>No Complaints</h5>
+                        <p class="text-muted">This student hasn't registered any complaints yet.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

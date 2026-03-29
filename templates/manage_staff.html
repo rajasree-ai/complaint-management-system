@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <h2><i class="fas fa-chalkboard-teacher me-2"></i>Manage Staff - {{ department }}</h2>
+            <a href="{{ url_for('add_department_staff') }}" class="btn btn-primary">
+                <i class="fas fa-user-plus me-2"></i>Add New Staff
+            </a>
+        </div>
+        <p class="text-muted">View and manage staff members in your department</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Staff Name</th>
+                                <th>Email</th>
+                                <th>Assigned Complaints</th>
+                                <th>Resolved</th>
+                                <th>Performance</th>
+                                <th>Actions</th>
+                             </thead>
+                        <tbody>
+                            {% for staff in staff_stats %}
+                            <tr>
+                                <td>{{ staff.user.id }}</td>
+                                <td>
+                                    <i class="fas fa-user-tie me-2 text-success"></i>
+                                    <strong>{{ staff.user.username }}</strong>
+                                </td>
+                                <td>{{ staff.user.email }}</td>
+                                <td>
+                                    <span class="badge bg-primary">{{ staff.assigned }}</span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-success">{{ staff.resolved }}</span>
+                                </td>
+                                <td>
+                                    <div class="progress" style="height: 20px;">
+                                        <div class="progress-bar bg-success" 
+                                             style="width: {{ staff.performance }}%;">
+                                            {{ staff.performance }}%
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="btn-group">
+                                        <a href="{{ url_for('view_complaints') }}?assigned_to={{ staff.user.id }}" 
+                                           class="btn btn-sm btn-info">
+                                            <i class="fas fa-tasks"></i> View Work
+                                        </a>
+                                        <button class="btn btn-sm btn-danger" 
+                                                onclick="deleteStaff({{ staff.user.id }}, '{{ staff.user.username }}')">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="7" class="text-center text-muted">No staff members in this department</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function deleteStaff(userId, username) {
+    if(confirm(`Are you sure you want to delete staff member "${username}"? This action cannot be undone.`)) {
+        fetch(`/department/staff/${userId}/delete`, {
+            method: 'POST'
+        }).then(response => {
+            if(response.ok) {
+                location.reload();
+            } else {
+                alert('Error deleting staff member');
+            }
+        });
+    }
+}
+</script>
+{% endblock %}

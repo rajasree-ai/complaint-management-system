@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h4 class="mb-0"><i class="fas fa-chalkboard-teacher me-2"></i>Staff/Mentor Registration</h4>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">Create your staff account to manage complaints assigned to you.</p>
+                
+                <form method="POST">
+                    <div class="mb-3">
+                        <label class="form-label">Username</label>
+                        <input type="text" name="username" class="form-control" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Email</label>
+                        <input type="email" name="email" class="form-control" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Department</label>
+                        <select name="department" class="form-select" required>
+                            <option value="">Select Department</option>
+                            {% for dept in departments %}
+                            <option value="{{ dept.name }}">{{ dept.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Password</label>
+                            <input type="password" name="password" class="form-control" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Confirm Password</label>
+                            <input type="password" name="confirm_password" class="form-control" required>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-success w-100">
+                        <i class="fas fa-user-plus me-2"></i>Register as Staff
+                    </button>
+                </form>
+                
+                <hr class="my-4">
+                <div class="text-center">
+                    <p class="text-muted mb-2">Already have an account?</p>
+                    <a href="{{ url_for('login') }}" class="btn btn-outline-primary w-100">
+                        <i class="fas fa-sign-in-alt me-2"></i>Login Here
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mt-3 bg-light">
+            <div class="card-body">
+                <h6 class="card-title"><i class="fas fa-info-circle me-2"></i>Staff Responsibilities</h6>
+                <ul class="small mb-0">
+                    <li>View complaints assigned to you by students or HOD</li>
+                    <li>Update complaint status (Pending → In Progress → Resolved)</li>
+                    <li>Add comments and updates to complaints</li>
+                    <li>Delete resolved or rejected complaints</li>
+                    <li>Track your performance metrics</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

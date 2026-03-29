@@ -1,37 +1,28 @@
 import random
 import string
-from datetime import datetime
+import re
+from datetime import datetime, timedelta
 from flask_mail import Message
+from models import Complaint, Notification, PasswordResetOTP, Department, User
+from database import db
 
-# Don't import models at the top level to avoid circular imports
-# We'll import inside functions where needed
-
-from models import Complaint
-from sqlalchemy import func
 
 def generate_complaint_id():
     """Generate sequential complaint ID in format ESEC01, ESEC02, etc."""
-    # Get the highest existing complaint number
+    from models import Complaint
+    
     latest_complaint = Complaint.query.order_by(Complaint.id.desc()).first()
     
     if latest_complaint and latest_complaint.complaint_id:
-        # Extract the number from the latest complaint ID (ESEC01 -> 1)
-        try:
-            # Handle both formats: ESEC01 and ESEC001
-            import re
-            match = re.search(r'ESEC(\d+)', latest_complaint.complaint_id)
-            if match:
-                last_number = int(match.group(1))
-                new_number = last_number + 1
-            else:
-                new_number = 1
-        except (ValueError, IndexError):
+        match = re.search(r'ESEC(\d+)', latest_complaint.complaint_id)
+        if match:
+            last_number = int(match.group(1))
+            new_number = last_number + 1
+        else:
             new_number = 1
     else:
-        # First complaint, start from 1
         new_number = 1
     
-    # Format with leading zeros (01, 02, 03...)
     if new_number <= 99:
         return f'ESEC{new_number:02d}'
     else:
@@ -44,20 +35,112 @@ def send_email_notification(recipient_email, subject, body, mail):
         msg = Message(subject, recipients=[recipient_email])
         msg.body = body
         mail.send(msg)
-        print(f"Email sent successfully to {recipient_email}")
+        print(f"✅ Email sent to {recipient_email}")
         return True
     except Exception as e:
-        print(f"Error sending email: {e}")
+        print(f"❌ Error sending email to {recipient_email}: {e}")
         return False
+
+
+def send_complaint_registration_email(complaint, mail):
+    """Send email when complaint is registered"""
+    subject = f'Complaint Registered: {complaint.complaint_id}'
+    body = f'''
+Dear {complaint.author.username},
+
+Your complaint has been successfully registered.
+
+Complaint Details:
+------------------
+Complaint ID: {complaint.complaint_id}
+Title: {complaint.title}
+Category: {complaint.category}
+Priority: {complaint.priority}
+Department: {complaint.author.department}
+Date: {complaint.created_at.strftime('%Y-%m-%d %H:%M')}
+
+You can track your complaint status at your dashboard.
+
+Thank you,
+Complaint Management System
+'''
+    return send_email_notification(complaint.author.email, subject, body, mail)
+
+
+def send_comment_notification(complaint, comment, mail):
+    """Send email when a comment is added to a complaint"""
+    subject = f'New Comment on Complaint: {complaint.complaint_id}'
+    body = f'''
+Dear {complaint.author.username},
+
+A new comment has been added to your complaint.
+
+Complaint: {complaint.title}
+Comment by: {comment.user.username}
+Comment: {comment.content}
+Date: {comment.created_at.strftime('%Y-%m-%d %H:%M')}
+
+View your complaint in your dashboard.
+
+Thank you,
+Complaint Management System
+'''
+    return send_email_notification(complaint.author.email, subject, body, mail)
+
+
+def send_status_update_email(complaint, old_status, mail):
+    """Send email when complaint status changes"""
+    subject = f'Complaint Status Updated: {complaint.complaint_id}'
+    body = f'''
+Dear {complaint.author.username},
+
+The status of your complaint has been updated.
+
+Complaint ID: {complaint.complaint_id}
+Title: {complaint.title}
+Previous Status: {old_status}
+New Status: {complaint.status}
+Updated Date: {complaint.updated_at.strftime('%Y-%m-%d %H:%M')}
+
+View your complaint in your dashboard.
+
+Thank you,
+Complaint Management System
+'''
+    return send_email_notification(complaint.author.email, subject, body, mail)
+
+
+def generate_otp():
+    """Generate a 6-digit OTP"""
+    return ''.join(random.choices(string.digits, k=6))
+
+
+def send_otp_email(email, otp, mail):
+    """Send OTP for password reset"""
+    subject = 'Password Reset OTP'
+    body = f'''
+Dear User,
+
+You requested to reset your password for the Complaint Management System.
+
+Your OTP is: {otp}
+
+This OTP is valid for 10 minutes.
+
+If you did not request this, please ignore this email.
+
+Thank you,
+Complaint Management System
+'''
+    return send_email_notification(email, subject, body, mail)
+
+
 def create_notification(user_id, complaint_id, message, notification_type='status_update'):
     """Create in-app notification"""
-    from models import Notification
-    from database import db
-    
     try:
         notification = Notification(
             user_id=user_id,
-            complaint_id=complaint_id if complaint_id else None,  # Handle None
+            complaint_id=complaint_id if complaint_id else None,
             message=message,
             type=notification_type
         )
@@ -70,18 +153,6 @@ def create_notification(user_id, complaint_id, message, notification_type='statu
         return False
 
 
-def get_department_users(department):
-    """Get all users in a department"""
-    # Import inside function to avoid circular imports
-    from models import User
-    
-    try:
-        return User.query.filter_by(department=department, role='staff').all()
-    except Exception as e:
-        print(f"Error getting department users: {e}")
-        return []
-
-
 def calculate_complaint_stats(complaints):
     """Calculate statistics for complaints"""
     total = len(complaints)
@@ -90,75 +161,44 @@ def calculate_complaint_stats(complaints):
     resolved = sum(1 for c in complaints if c.status == 'resolved')
     rejected = sum(1 for c in complaints if c.status == 'rejected')
     
-    # Calculate resolution rate
-    if total > 0:
-        resolution_rate = round((resolved / total) * 100, 2)
-    else:
-        resolution_rate = 0
-    
-    print(f"Stats calculated - Total: {total}, Pending: {pending}, In Progress: {in_progress}, Resolved: {resolved}, Rejected: {rejected}")  # Debug print
-    
     return {
         'total': total,
         'pending': pending,
         'in_progress': in_progress,
         'resolved': resolved,
         'rejected': rejected,
-        'resolution_rate': resolution_rate
+        'resolution_rate': round((resolved / total * 100) if total > 0 else 0, 2)
     }
 
-def migrate_to_esec_format():
-    """Migrate existing complaints to ESEC format (run once)"""
-    # Import inside function to avoid circular imports
-    from models import Complaint
-    from database import db
-    
-    try:
-        complaints = Complaint.query.all()
-        count = 0
-        
-        for index, complaint in enumerate(complaints, start=1):
-            # Check if already in ESEC format
-            if not complaint.complaint_id or not complaint.complaint_id.startswith('ESEC'):
-                # Assign new sequential ID
-                if index <= 99:
-                    complaint.complaint_id = f'ESEC{index:02d}'
-                else:
-                    complaint.complaint_id = f'ESEC{index:03d}'
-                count += 1
-        
-        if count > 0:
-            db.session.commit()
-            print(f"Migrated {count} complaints to ESEC format")
-        else:
-            print("No complaints needed migration")
-            
-    except Exception as e:
-        print(f"Error during migration: {e}")
-        db.session.rollback()
+
+def get_department_users(department):
+    """Get all users in a department"""
+    return User.query.filter_by(department=department).all()
 
 
-def get_next_complaint_number():
-    """Helper function to get the next complaint number"""
-    from models import Complaint
-    
-    try:
-        # Get all ESEC formatted complaints
-        complaints = Complaint.query.filter(
-            Complaint.complaint_id.like('ESEC%')
-        ).all()
-        
-        max_number = 0
-        for complaint in complaints:
-            try:
-                num = int(complaint.complaint_id[4:])
-                if num > max_number:
-                    max_number = num
-            except (ValueError, IndexError):
-                continue
-        
-        return max_number + 1
-        
-    except Exception as e:
-        print(f"Error getting next complaint number: {e}")
-        return 1
+def get_hod_department(hod_id):
+    """Get department where user is HOD"""
+    return Department.query.filter_by(hod_id=hod_id).first()
+
+
+def get_hod_department_by_name(department_name):
+    """Get department by name"""
+    return Department.query.filter_by(name=department_name).first()
+
+
+def get_user_department(user_id):
+    """Get department of a user"""
+    user = User.query.get(user_id)
+    return user.department if user else None
+
+
+def is_hod_of_department(user_id, department_name):
+    """Check if user is HOD of a department"""
+    department = Department.query.filter_by(name=department_name).first()
+    return department and department.hod_id == user_id
+
+
+def get_department_hod(department_name):
+    """Get HOD of a department"""
+    department = Department.query.filter_by(name=department_name).first()
+    return User.query.get(department.hod_id) if department else None

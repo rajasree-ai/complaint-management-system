@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-warning text-dark">
+                <h4 class="mb-0"><i class="fas fa-edit me-2"></i>Edit Department</h4>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="mb-3">
+                        {{ form.name.label(class="form-label") }}
+                        {{ form.name(class="form-control", placeholder="Department Name") }}
+                        <small class="text-muted">Department name should be unique</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.hod_id.label(class="form-label") }}
+                        {{ form.hod_id(class="form-select") }}
+                        <small class="text-muted">Select the Head of Department (HOD) for this department</small>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between">
+                        <a href="{{ url_for('manage_departments') }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>Cancel
+                        </a>
+                        {{ form.submit(class="btn btn-warning") }}
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <div class="card mt-3 bg-light">
+            <div class="card-body">
+                <h6 class="card-title"><i class="fas fa-info-circle me-2"></i>Department Information</h6>
+                <p class="small text-muted mb-0">
+                    <strong>Current Department:</strong> {{ department.name }}<br>
+                    <strong>Current HOD:</strong> {% if department.hod %}{{ department.hod.username }} ({{ department.hod.email }}){% else %}Not Assigned{% endif %}<br>
+                    <strong>Created:</strong> {{ department.created_at.strftime('%Y-%m-%d') }}
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

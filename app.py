@@ -287,7 +287,10 @@ def register_staff():
         if existing_user:
             flash('Email already registered!', 'danger')
             return redirect(url_for('register_staff'))
-        
+        existing_username = User.query.filter_by(username=username).first()
+        if existing_username:
+             flash('Username already exists! Please choose another.', 'danger')
+             return redirect(url_for('register_staff'))
         dept = Department.query.filter_by(name=department).first()
         if not dept:
             flash('Invalid department!', 'danger')

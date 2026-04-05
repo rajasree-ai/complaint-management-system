@@ -6,6 +6,8 @@ from datetime import datetime, timedelta
 import logging
 import sys
 import os
+import time
+from sqlalchemy.exc import OperationalError
 
 # Add parent directory to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -32,6 +34,27 @@ app.config.from_object(Config)
 db.init_app(app)
 login_manager.init_app(app)
 mail = Mail(app)
+
+
+# ========== DATABASE RETRY DECORATOR ==========
+
+def db_retry(max_retries=3, delay=2):
+    """Decorator to retry database operations on connection errors"""
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            for attempt in range(max_retries):
+                try:
+                    return func(*args, **kwargs)
+                except OperationalError as e:
+                    if 'SSL SYSCALL error' in str(e) or 'EOF detected' in str(e):
+                        if attempt < max_retries - 1:
+                            print(f"Database connection error, retrying in {delay}s... (Attempt {attempt + 1}/{max_retries})")
+                            time.sleep(delay)
+                            continue
+                    raise e
+            return None
+        return wrapper
+    return decorator
 
 
 # ========== HELPER FUNCTIONS ==========
@@ -149,18 +172,23 @@ def can_delete_user(user):
     
     return True, "User can be deleted"
 
+
 def get_department_user_counts(department_name):
     """Get user counts for a department"""
     users = User.query.filter_by(department=department_name).all()
     students = sum(1 for u in users if u.role == 'student')
     staff = sum(1 for u in users if u.role == 'staff')
     return students, staff
+
+
 def can_delete_department(department):
     """Check if a department can be deleted"""
     user_count = User.query.filter_by(department=department.name).count()
     if user_count > 0:
         return False, f"Cannot delete '{department.name}'. It has {user_count} user(s) assigned."
     return True, "Can delete"
+
+
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
@@ -240,7 +268,6 @@ def register():
         db.session.add(user)
         db.session.commit()
         
-        # Send welcome email
         subject = 'Welcome to Complaint Management System'
         body = f'''
 Dear {user.username},
@@ -267,6 +294,7 @@ Complaint Management System
     
     return render_template('register.html', form=form)
 
+
 @app.route('/register-staff', methods=['GET', 'POST'])
 def register_staff():
     if current_user.is_authenticated:
@@ -289,8 +317,8 @@ def register_staff():
             return redirect(url_for('register_staff'))
         existing_username = User.query.filter_by(username=username).first()
         if existing_username:
-             flash('Username already exists! Please choose another.', 'danger')
-             return redirect(url_for('register_staff'))
+            flash('Username already exists! Please choose another.', 'danger')
+            return redirect(url_for('register_staff'))
         dept = Department.query.filter_by(name=department).first()
         if not dept:
             flash('Invalid department!', 'danger')
@@ -518,7 +546,6 @@ def mentor_student_complaints(student_id):
     complaints = Complaint.query.filter_by(user_id=student.id).order_by(Complaint.created_at.desc()).all()
     stats = calculate_complaint_stats(complaints)
     
-    # Get staff information for each complaint's assigned_to
     for complaint in complaints:
         if complaint.assigned_to:
             complaint.assigned_staff = User.query.get(complaint.assigned_to)
@@ -530,6 +557,7 @@ def mentor_student_complaints(student_id):
                          complaints=complaints,
                          stats=stats,
                          mentor=current_user)
+
 
 @app.route('/send-message/<int:student_id>', methods=['POST'])
 @login_required
@@ -550,7 +578,6 @@ def send_message_to_student(student_id):
         flash('Please provide both subject and message.', 'danger')
         return redirect(url_for('mentor_students'))
     
-    # Send email
     email_body = f'''
 Dear {student.username},
 
@@ -567,20 +594,13 @@ Complaint Management System
     
     try:
         send_email_notification(student.email, subject, email_body, mail)
-        
-        # Create in-app notification
-        create_notification(
-            student.id,
-            None,
-            f'New message from your mentor: {subject}',
-            'message'
-        )
-        
+        create_notification(student.id, None, f'New message from your mentor: {subject}', 'message')
         flash(f'Message sent to {student.username} successfully!', 'success')
     except Exception as e:
         flash(f'Error sending message: {str(e)}', 'danger')
     
     return redirect(url_for('mentor_students'))
+
 
 @app.route('/mentor/student/<int:student_id>/profile')
 @login_required
@@ -603,7 +623,6 @@ def mentor_student_profile(student_id):
                          mentor=current_user)
 
 
-# ========== MENTOR DELETE STUDENT ROUTE ==========
 @app.route('/mentor/student/<int:student_id>/delete', methods=['POST'])
 @login_required
 def mentor_delete_student(student_id):
@@ -623,23 +642,13 @@ def mentor_delete_student(student_id):
     try:
         username = student.username
         
-        # First, delete all complaints and related data
         for complaint in student.complaints:
-            # Delete comments related to each complaint
             Comment.query.filter_by(complaint_id=complaint.id).delete()
-            # Delete notifications related to each complaint
             Notification.query.filter_by(complaint_id=complaint.id).delete()
         
-        # Delete all complaints by this student
         Complaint.query.filter_by(user_id=student.id).delete()
-        
-        # Delete all notifications related to this student
         Notification.query.filter_by(user_id=student.id).delete()
-        
-        # Delete all comments by this student
         Comment.query.filter_by(user_id=student.id).delete()
-        
-        # Delete the student
         db.session.delete(student)
         db.session.commit()
         
@@ -650,6 +659,8 @@ def mentor_delete_student(student_id):
         flash(f'Error deleting student: {str(e)}', 'danger')
     
     return redirect(url_for('mentor_students'))
+
+
 # ========== COMPLAINT ROUTES ==========
 
 @app.route('/complaint/new', methods=['GET', 'POST'])
@@ -685,12 +696,7 @@ def new_complaint():
         if mentor_id:
             mentor = User.query.get(mentor_id)
             if mentor:
-                create_notification(
-                    mentor.id,
-                    complaint.id,
-                    f'New complaint assigned to you by {current_user.username}',
-                    'new_complaint'
-                )
+                create_notification(mentor.id, complaint.id, f'New complaint assigned to you by {current_user.username}', 'new_complaint')
                 mentor_subject = f'New Complaint Assigned: {complaint.complaint_id}'
                 mentor_body = f'''
 Dear {mentor.username},
@@ -712,12 +718,7 @@ Complaint Management System
         
         hod_dept = get_hod_department_by_name(current_user.department)
         if hod_dept and hod_dept.hod_id:
-            create_notification(
-                hod_dept.hod_id,
-                complaint.id,
-                f'New complaint from {current_user.username} in {current_user.department} department',
-                'new_complaint'
-            )
+            create_notification(hod_dept.hod_id, complaint.id, f'New complaint from {current_user.username} in {current_user.department} department', 'new_complaint')
         
         flash('Your complaint has been submitted!', 'success')
         return redirect(url_for('view_complaints'))
@@ -821,12 +822,7 @@ def complaint_details(complaint_id):
         send_comment_notification(complaint, comment, mail)
         
         if complaint.user_id != current_user.id:
-            create_notification(
-                complaint.user_id,
-                complaint.id,
-                f'New comment on your complaint #{complaint.complaint_id}',
-                'comment'
-            )
+            create_notification(complaint.user_id, complaint.id, f'New comment on your complaint #{complaint.complaint_id}', 'comment')
         
         flash('Comment added!', 'success')
         return redirect(url_for('complaint_details', complaint_id=complaint.id))
@@ -853,12 +849,7 @@ def complaint_details(complaint_id):
         db.session.commit()
         
         if old_status != complaint.status:
-            create_notification(
-                complaint.user_id,
-                complaint.id,
-                f'Your complaint status has been updated from {old_status} to {complaint.status}',
-                'status_update'
-            )
+            create_notification(complaint.user_id, complaint.id, f'Your complaint status has been updated from {old_status} to {complaint.status}', 'status_update')
             send_status_update_email(complaint, old_status, mail)
         
         flash('Complaint updated successfully!', 'success')
@@ -885,12 +876,7 @@ def resolve_complaint(complaint_id):
     complaint.updated_at = datetime.utcnow()
     db.session.commit()
     
-    create_notification(
-        complaint.user_id,
-        complaint.id,
-        f'Your complaint has been marked as resolved!',
-        'status_update'
-    )
+    create_notification(complaint.user_id, complaint.id, f'Your complaint has been marked as resolved!', 'status_update')
     send_status_update_email(complaint, old_status, mail)
     
     flash(f'Complaint marked as resolved!', 'success')
@@ -971,12 +957,7 @@ def api_update_status(complaint_id):
     complaint.updated_at = datetime.utcnow()
     db.session.commit()
     
-    create_notification(
-        complaint.user_id,
-        complaint.id,
-        f'Your complaint status has been updated from {old_status} to {new_status} by {current_user.username}',
-        'status_update'
-    )
+    create_notification(complaint.user_id, complaint.id, f'Your complaint status has been updated from {old_status} to {new_status} by {current_user.username}', 'status_update')
     
     return jsonify({'success': True})
 
@@ -1253,6 +1234,7 @@ def super_admin_delete_user(user_id):
 
 
 # ========== DEPARTMENT MANAGEMENT ROUTES ==========
+
 @app.route('/admin/departments')
 @login_required
 def manage_departments():
@@ -1261,11 +1243,9 @@ def manage_departments():
     
     departments = Department.query.all()
     
-    # Calculate counts for each department in the route (not in template)
     for dept in departments:
         dept.student_count = User.query.filter_by(department=dept.name, role='student').count()
         dept.staff_count = User.query.filter_by(department=dept.name, role='staff').count()
-        # Use explicit join to avoid ambiguous foreign key
         dept.complaint_count = Complaint.query.join(User, Complaint.user_id == User.id).filter(User.department == dept.name).count()
     
     return render_template('manage_departments.html', departments=departments)
@@ -1313,20 +1293,18 @@ def edit_department(dept_id):
     
     return render_template('edit_department.html', form=form, department=department)
 
+
 @app.route('/admin/department/<int:dept_id>/delete', methods=['POST'])
 @login_required
 def delete_department(dept_id):
-    """Delete a department (admin only)"""
     if not is_super_admin(current_user):
         abort(403)
     
     department = Department.query.get_or_404(dept_id)
     
-    # Check if department has any users
     user_count = User.query.filter_by(department=department.name).count()
     
     if user_count > 0:
-        # Show which users are in the department
         users = User.query.filter_by(department=department.name).all()
         user_list = ", ".join([f"{u.username} ({u.role})" for u in users])
         flash(f'Cannot delete department "{department.name}". It has {user_count} user(s): {user_list}', 'danger')
@@ -1342,6 +1320,8 @@ def delete_department(dept_id):
         flash(f'Error deleting department: {str(e)}', 'danger')
     
     return redirect(url_for('manage_departments'))
+
+
 # ========== NOTIFICATION & PROFILE ROUTES ==========
 
 @app.route('/notifications')
@@ -1385,7 +1365,7 @@ def delete_own_account():
         return redirect(url_for('profile'))
 
 
-# ========== PASSWORD RESET ROUTES ==========
+# ========== PASSWORD RESET ROUTES (WITH RETRY LOGIC) ==========
 
 @app.route('/forgot-password', methods=['GET', 'POST'])
 def forgot_password():
@@ -1394,24 +1374,52 @@ def forgot_password():
     
     form = ForgotPasswordForm()
     if form.validate_on_submit():
-        user = User.query.filter_by(email=form.email.data).first()
-        if user:
+        email = form.email.data
+        
+        # Use retry logic for database query
+        user = None
+        for attempt in range(3):
+            try:
+                user = User.query.filter_by(email=email).first()
+                break
+            except OperationalError as e:
+                if attempt < 2:
+                    print(f"Database error, retrying... ({attempt + 1}/3)")
+                    time.sleep(2)
+                else:
+                    raise e
+        
+        if not user:
+            flash('No account found with that email address.', 'danger')
+            return redirect(url_for('forgot_password'))
+        
+        try:
             otp = generate_otp()
             expires_at = datetime.utcnow() + timedelta(minutes=10)
             
+            PasswordResetOTP.query.filter_by(email=email, is_used=False).delete()
+            
             reset_request = PasswordResetOTP(
-                email=user.email,
+                email=email,
                 otp=otp,
                 expires_at=expires_at
             )
             db.session.add(reset_request)
             db.session.commit()
             
-            send_otp_email(user.email, otp, mail)
-            flash('OTP has been sent to your email. It expires in 10 minutes.', 'info')
-            return redirect(url_for('reset_password', email=user.email))
-        else:
-            flash('No account found with that email address.', 'danger')
+            try:
+                send_otp_email(email, otp, mail)
+                flash('OTP has been sent to your email. It expires in 10 minutes.', 'info')
+            except Exception as e:
+                print(f"Email error: {e}")
+                flash(f'[TEST MODE] Your OTP is: {otp}', 'info')
+            
+            return redirect(url_for('reset_password', email=email))
+            
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error: {e}")
+            flash('An error occurred. Please try again.', 'danger')
     
     return render_template('forgot_password.html', form=form)
 
@@ -1510,6 +1518,15 @@ def test_email():
         flash(f'Error sending email: {str(e)}', 'danger')
     
     return redirect(url_for('super_admin_dashboard'))
+
+
+@app.route('/health')
+def health_check():
+    try:
+        db.session.execute('SELECT 1')
+        return {"status": "healthy", "database": "connected"}
+    except Exception as e:
+        return {"status": "unhealthy", "error": str(e)}, 500
 
 
 # ========== CONTEXT PROCESSORS ==========

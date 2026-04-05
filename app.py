@@ -1,4 +1,4 @@
-from flask import Flask, render_template, redirect, url_for, flash, request, abort, jsonify
+from flask import Flask, render_template, redirect, url_for, flash, request, abort, jsonify, session
 from flask_login import login_user, current_user, logout_user, login_required
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_mail import Mail
@@ -25,10 +25,12 @@ from utils import (
     send_comment_notification, send_status_update_email, generate_otp, 
     send_otp_email, get_hod_department
 )
-# Add near the top with other imports
-from sqlalchemy.pool import NullPool
 
-# Modify the database initialization to use less memory
+# Initialize Flask app
+app = Flask(__name__)
+app.config.from_object(Config)
+
+# ========== DATABASE ENGINE OPTIONS - OPTIMIZED FOR RENDER ==========
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     'pool_size': 2,
     'pool_recycle': 300,
@@ -36,9 +38,7 @@ app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     'pool_timeout': 30,
     'max_overflow': 5
 }
-# Initialize Flask app
-app = Flask(__name__)
-app.config.from_object(Config)
+# ====================================================================
 
 # Initialize extensions
 db.init_app(app)
@@ -1375,7 +1375,7 @@ def delete_own_account():
         return redirect(url_for('profile'))
 
 
-# ========== PASSWORD RESET ROUTES (WITH RETRY LOGIC) ==========
+# ========== PASSWORD RESET ROUTES (SIMPLIFIED FOR RENDER) ==========
 
 @app.route('/forgot-password', methods=['GET', 'POST'])
 def forgot_password():
@@ -1386,30 +1386,34 @@ def forgot_password():
     if form.validate_on_submit():
         email = form.email.data
         
-        # Simple database query without complex retry
+        # Simple database query
         user = User.query.filter_by(email=email).first()
         
         if not user:
             flash('No account found with that email address.', 'danger')
             return redirect(url_for('forgot_password'))
         
-        # For testing, show OTP on screen
+        # Generate OTP and store in session (simpler than database)
         otp = generate_otp()
-        flash(f'[TEST MODE] Your OTP is: {otp}', 'info')
-        flash('Password reset is in test mode. Use the OTP above.', 'warning')
-        
-        # Store in session for testing (simpler than database)
         session['reset_email'] = email
         session['reset_otp'] = otp
         session['reset_expires'] = (datetime.utcnow() + timedelta(minutes=10)).timestamp()
         
-        return redirect(url_for('reset_password_test'))
+        # Try to send email, but show OTP on screen for testing
+        try:
+            send_otp_email(email, otp, mail)
+            flash('OTP has been sent to your email. It expires in 10 minutes.', 'info')
+        except Exception as e:
+            print(f"Email error: {e}")
+            flash(f'[TEST MODE] Your OTP is: {otp}', 'info')
+        
+        return redirect(url_for('reset_password'))
     
     return render_template('forgot_password.html', form=form)
 
 
-@app.route('/reset-password-test', methods=['GET', 'POST'])
-def reset_password_test():
+@app.route('/reset-password', methods=['GET', 'POST'])
+def reset_password():
     if current_user.is_authenticated:
         return redirect(url_for('dashboard'))
     
@@ -1439,6 +1443,7 @@ def reset_password_test():
             flash('Invalid OTP.', 'danger')
     
     return render_template('reset_password.html', form=form, email=email)
+
 
 # ========== TEMPORARY FIX ROUTES ==========
 

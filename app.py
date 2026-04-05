@@ -25,7 +25,17 @@ from utils import (
     send_comment_notification, send_status_update_email, generate_otp, 
     send_otp_email, get_hod_department
 )
+# Add near the top with other imports
+from sqlalchemy.pool import NullPool
 
+# Modify the database initialization to use less memory
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+    'pool_size': 2,
+    'pool_recycle': 300,
+    'pool_pre_ping': True,
+    'pool_timeout': 30,
+    'max_overflow': 5
+}
 # Initialize Flask app
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -1376,89 +1386,59 @@ def forgot_password():
     if form.validate_on_submit():
         email = form.email.data
         
-        # Use retry logic for database query
-        user = None
-        for attempt in range(3):
-            try:
-                user = User.query.filter_by(email=email).first()
-                break
-            except OperationalError as e:
-                if attempt < 2:
-                    print(f"Database error, retrying... ({attempt + 1}/3)")
-                    time.sleep(2)
-                else:
-                    raise e
+        # Simple database query without complex retry
+        user = User.query.filter_by(email=email).first()
         
         if not user:
             flash('No account found with that email address.', 'danger')
             return redirect(url_for('forgot_password'))
         
-        try:
-            otp = generate_otp()
-            expires_at = datetime.utcnow() + timedelta(minutes=10)
-            
-            PasswordResetOTP.query.filter_by(email=email, is_used=False).delete()
-            
-            reset_request = PasswordResetOTP(
-                email=email,
-                otp=otp,
-                expires_at=expires_at
-            )
-            db.session.add(reset_request)
-            db.session.commit()
-            
-            try:
-                send_otp_email(email, otp, mail)
-                flash('OTP has been sent to your email. It expires in 10 minutes.', 'info')
-            except Exception as e:
-                print(f"Email error: {e}")
-                flash(f'[TEST MODE] Your OTP is: {otp}', 'info')
-            
-            return redirect(url_for('reset_password', email=email))
-            
-        except Exception as e:
-            db.session.rollback()
-            print(f"Error: {e}")
-            flash('An error occurred. Please try again.', 'danger')
+        # For testing, show OTP on screen
+        otp = generate_otp()
+        flash(f'[TEST MODE] Your OTP is: {otp}', 'info')
+        flash('Password reset is in test mode. Use the OTP above.', 'warning')
+        
+        # Store in session for testing (simpler than database)
+        session['reset_email'] = email
+        session['reset_otp'] = otp
+        session['reset_expires'] = (datetime.utcnow() + timedelta(minutes=10)).timestamp()
+        
+        return redirect(url_for('reset_password_test'))
     
     return render_template('forgot_password.html', form=form)
 
 
-@app.route('/reset-password/<email>', methods=['GET', 'POST'])
-def reset_password(email):
+@app.route('/reset-password-test', methods=['GET', 'POST'])
+def reset_password_test():
     if current_user.is_authenticated:
         return redirect(url_for('dashboard'))
     
-    user = User.query.filter_by(email=email).first()
-    if not user:
-        flash('Invalid request.', 'danger')
-        return redirect(url_for('login'))
+    email = session.get('reset_email')
+    if not email:
+        flash('Please request password reset first.', 'warning')
+        return redirect(url_for('forgot_password'))
+    
+    # Check if OTP expired
+    if datetime.utcnow().timestamp() > session.get('reset_expires', 0):
+        flash('OTP has expired. Please request a new one.', 'danger')
+        return redirect(url_for('forgot_password'))
     
     form = ResetPasswordForm()
     if form.validate_on_submit():
-        otp_record = PasswordResetOTP.query.filter_by(
-            email=email, 
-            otp=form.otp.data,
-            is_used=False
-        ).order_by(PasswordResetOTP.created_at.desc()).first()
-        
-        if not otp_record:
+        if form.otp.data == session.get('reset_otp'):
+            user = User.query.filter_by(email=email).first()
+            if user:
+                user.password = generate_password_hash(form.new_password.data)
+                db.session.commit()
+                session.pop('reset_email', None)
+                session.pop('reset_otp', None)
+                session.pop('reset_expires', None)
+                flash('Your password has been reset successfully!', 'success')
+                return redirect(url_for('login'))
+        else:
             flash('Invalid OTP.', 'danger')
-            return redirect(url_for('reset_password', email=email))
-        
-        if datetime.utcnow() > otp_record.expires_at:
-            flash('OTP has expired. Please request a new one.', 'danger')
-            return redirect(url_for('forgot_password'))
-        
-        user.password = generate_password_hash(form.new_password.data)
-        otp_record.is_used = True
-        db.session.commit()
-        
-        flash('Your password has been reset successfully! Please login with your new password.', 'success')
-        return redirect(url_for('login'))
     
     return render_template('reset_password.html', form=form, email=email)
-
 
 # ========== TEMPORARY FIX ROUTES ==========
 

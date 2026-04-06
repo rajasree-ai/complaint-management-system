@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from flask_mail import Message
 from models import Complaint, Notification, PasswordResetOTP, Department, User
 from database import db
-
+import time
 
 def generate_complaint_id():
     """Generate sequential complaint ID in format ESEC01, ESEC02, etc."""
@@ -117,10 +117,10 @@ def generate_otp():
 
 
 def send_otp_email(email, otp, mail):
-    """Send OTP to user's email"""
-    try:
-        subject = 'Password Reset OTP - Complaint Management System'
-        body = f'''
+    """Send OTP to user's email with retry logic"""
+    
+    subject = 'Password Reset OTP - Complaint Management System'
+    body = f'''
 Dear User,
 
 You requested to reset your password for the Complaint Management System.
@@ -134,14 +134,21 @@ If you did not request this, please ignore this email.
 Thank you,
 Complaint Management System
 '''
-        msg = Message(subject, recipients=[email])
-        msg.body = body
-        mail.send(msg)
-        print(f"OTP email sent to {email}")
-        return True
-    except Exception as e:
-        print(f"Error sending email: {e}")
-        return False
+    
+    # Try multiple times with delay
+    for attempt in range(3):
+        try:
+            msg = Message(subject, recipients=[email])
+            msg.body = body
+            mail.send(msg)
+            print(f"✅ OTP email sent to {email} on attempt {attempt + 1}")
+            return True
+        except Exception as e:
+            print(f"❌ Attempt {attempt + 1} failed: {e}")
+            if attempt < 2:
+                time.sleep(2)  # Wait 2 seconds before retry
+    
+    return False
 
 
 def create_notification(user_id, complaint_id, message, notification_type='status_update'):

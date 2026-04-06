@@ -1376,7 +1376,6 @@ def delete_own_account():
 
 
 # ========== PASSWORD RESET ROUTES (SIMPLIFIED FOR RENDER) ==========
-
 @app.route('/forgot-password', methods=['GET', 'POST'])
 def forgot_password():
     if current_user.is_authenticated:
@@ -1386,26 +1385,27 @@ def forgot_password():
     if form.validate_on_submit():
         email = form.email.data
         
-        # Simple database query
-        user = User.query.filter_by(email=email).first()
+        # Simple database query with error handling
+        try:
+            user = User.query.filter_by(email=email).first()
+        except Exception as e:
+            print(f"Database error: {e}")
+            flash('System error. Please try again later.', 'danger')
+            return redirect(url_for('forgot_password'))
         
         if not user:
             flash('No account found with that email address.', 'danger')
             return redirect(url_for('forgot_password'))
         
-        # Generate OTP and store in session (simpler than database)
+        # Generate OTP and store in session
         otp = generate_otp()
         session['reset_email'] = email
         session['reset_otp'] = otp
         session['reset_expires'] = (datetime.utcnow() + timedelta(minutes=10)).timestamp()
         
-        # Try to send email, but show OTP on screen for testing
-        try:
-            send_otp_email(email, otp, mail)
-            flash('OTP has been sent to your email. It expires in 10 minutes.', 'info')
-        except Exception as e:
-            print(f"Email error: {e}")
-            flash(f'[TEST MODE] Your OTP is: {otp}', 'info')
+        # Show OTP on screen (email disabled for now)
+        flash(f'Your password reset OTP is: {otp}', 'info')
+        flash('Note: Email sending is currently disabled. Please use the OTP shown above.', 'warning')
         
         return redirect(url_for('reset_password'))
     
@@ -1430,20 +1430,24 @@ def reset_password():
     form = ResetPasswordForm()
     if form.validate_on_submit():
         if form.otp.data == session.get('reset_otp'):
-            user = User.query.filter_by(email=email).first()
-            if user:
-                user.password = generate_password_hash(form.new_password.data)
-                db.session.commit()
-                session.pop('reset_email', None)
-                session.pop('reset_otp', None)
-                session.pop('reset_expires', None)
-                flash('Your password has been reset successfully!', 'success')
-                return redirect(url_for('login'))
+            try:
+                user = User.query.filter_by(email=email).first()
+                if user:
+                    user.password = generate_password_hash(form.new_password.data)
+                    db.session.commit()
+                    session.pop('reset_email', None)
+                    session.pop('reset_otp', None)
+                    session.pop('reset_expires', None)
+                    flash('Your password has been reset successfully!', 'success')
+                    return redirect(url_for('login'))
+            except Exception as e:
+                db.session.rollback()
+                print(f"Database error: {e}")
+                flash('Error resetting password. Please try again.', 'danger')
         else:
             flash('Invalid OTP.', 'danger')
     
     return render_template('reset_password.html', form=form, email=email)
-
 
 # ========== TEMPORARY FIX ROUTES ==========
 

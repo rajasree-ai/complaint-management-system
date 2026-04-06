@@ -1385,7 +1385,6 @@ def forgot_password():
     if form.validate_on_submit():
         email = form.email.data
         
-        # Simple database query with error handling
         try:
             user = User.query.filter_by(email=email).first()
         except Exception as e:
@@ -1397,58 +1396,85 @@ def forgot_password():
             flash('No account found with that email address.', 'danger')
             return redirect(url_for('forgot_password'))
         
-        # Generate OTP and store in session
+        # Generate OTP
         otp = generate_otp()
-        session['reset_email'] = email
-        session['reset_otp'] = otp
-        session['reset_expires'] = (datetime.utcnow() + timedelta(minutes=10)).timestamp()
+        expires_at = datetime.utcnow() + timedelta(minutes=10)
         
-        # Show OTP on screen (email disabled for now)
-        flash(f'Your password reset OTP is: {otp}', 'info')
-        flash('Note: Email sending is currently disabled. Please use the OTP shown above.', 'warning')
-        
-        return redirect(url_for('reset_password'))
+        # Store OTP in database
+        try:
+            # Delete old OTPs
+            PasswordResetOTP.query.filter_by(email=email, is_used=False).delete()
+            
+            # Create new OTP record
+            reset_request = PasswordResetOTP(
+                email=email,
+                otp=otp,
+                expires_at=expires_at
+            )
+            db.session.add(reset_request)
+            db.session.commit()
+            
+            # Send email
+            email_sent = send_otp_email(email, otp, mail)
+            
+            if email_sent:
+                flash('OTP has been sent to your email. It expires in 10 minutes.', 'success')
+                return redirect(url_for('reset_password', email=email))
+            else:
+                # Fallback: Show OTP on screen
+                flash(f'Email could not be sent. Your OTP is: {otp}', 'warning')
+                return redirect(url_for('reset_password', email=email))
+                
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error: {e}")
+            flash('An error occurred. Please try again.', 'danger')
     
     return render_template('forgot_password.html', form=form)
 
 
-@app.route('/reset-password', methods=['GET', 'POST'])
-def reset_password():
+@app.route('/reset-password/<email>', methods=['GET', 'POST'])
+def reset_password(email):
     if current_user.is_authenticated:
         return redirect(url_for('dashboard'))
     
-    email = session.get('reset_email')
-    if not email:
-        flash('Please request password reset first.', 'warning')
-        return redirect(url_for('forgot_password'))
-    
-    # Check if OTP expired
-    if datetime.utcnow().timestamp() > session.get('reset_expires', 0):
-        flash('OTP has expired. Please request a new one.', 'danger')
-        return redirect(url_for('forgot_password'))
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        flash('Invalid request.', 'danger')
+        return redirect(url_for('login'))
     
     form = ResetPasswordForm()
     if form.validate_on_submit():
-        if form.otp.data == session.get('reset_otp'):
-            try:
-                user = User.query.filter_by(email=email).first()
-                if user:
-                    user.password = generate_password_hash(form.new_password.data)
-                    db.session.commit()
-                    session.pop('reset_email', None)
-                    session.pop('reset_otp', None)
-                    session.pop('reset_expires', None)
-                    flash('Your password has been reset successfully!', 'success')
-                    return redirect(url_for('login'))
-            except Exception as e:
-                db.session.rollback()
-                print(f"Database error: {e}")
-                flash('Error resetting password. Please try again.', 'danger')
-        else:
-            flash('Invalid OTP.', 'danger')
+        try:
+            # Find valid OTP
+            otp_record = PasswordResetOTP.query.filter_by(
+                email=email, 
+                otp=form.otp.data,
+                is_used=False
+            ).order_by(PasswordResetOTP.created_at.desc()).first()
+            
+            if not otp_record:
+                flash('Invalid OTP.', 'danger')
+                return redirect(url_for('reset_password', email=email))
+            
+            if datetime.utcnow() > otp_record.expires_at:
+                flash('OTP has expired. Please request a new one.', 'danger')
+                return redirect(url_for('forgot_password'))
+            
+            # Update password
+            user.password = generate_password_hash(form.new_password.data)
+            otp_record.is_used = True
+            db.session.commit()
+            
+            flash('Your password has been reset successfully! Please login with your new password.', 'success')
+            return redirect(url_for('login'))
+            
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error: {e}")
+            flash('An error occurred. Please try again.', 'danger')
     
     return render_template('reset_password.html', form=form, email=email)
-
 # ========== TEMPORARY FIX ROUTES ==========
 
 @app.route('/fix-complaint-ids')
@@ -1507,7 +1533,24 @@ def test_email():
         flash(f'Error sending email: {str(e)}', 'danger')
     
     return redirect(url_for('super_admin_dashboard'))
-
+@app.route('/test-email-config')
+@login_required
+def test_email_config():
+    if not is_super_admin(current_user):
+        abort(403)
+    
+    try:
+        send_email_notification(
+            current_user.email,
+            'Test Email Configuration',
+            'This is a test email from your Complaint Management System.',
+            mail
+        )
+        flash('Test email sent successfully!', 'success')
+    except Exception as e:
+        flash(f'Error: {str(e)}', 'danger')
+    
+    return redirect(url_for('super_admin_dashboard'))
 
 @app.route('/health')
 def health_check():

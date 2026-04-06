@@ -28,17 +28,19 @@ def generate_complaint_id():
     else:
         return f'ESEC{new_number:03d}'
 
-
 def send_email_notification(recipient_email, subject, body, mail):
-    """Send email notification"""
+    """Send email notification with better error handling"""
     try:
-        msg = Message(subject, recipients=[recipient_email])
-        msg.body = body
+        msg = Message(
+            subject=subject,
+            recipients=[recipient_email],
+            body=body
+        )
         mail.send(msg)
         print(f"✅ Email sent to {recipient_email}")
         return True
     except Exception as e:
-        print(f"❌ Error sending email to {recipient_email}: {e}")
+        print(f"❌ Error sending email to {recipient_email}: {str(e)}")
         return False
 
 

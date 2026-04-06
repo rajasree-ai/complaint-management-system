@@ -111,16 +111,16 @@ Complaint Management System
 '''
     return send_email_notification(complaint.author.email, subject, body, mail)
 
-
 def generate_otp():
     """Generate a 6-digit OTP"""
     return ''.join(random.choices(string.digits, k=6))
 
 
 def send_otp_email(email, otp, mail):
-    """Send OTP for password reset"""
-    subject = 'Password Reset OTP'
-    body = f'''
+    """Send OTP to user's email"""
+    try:
+        subject = 'Password Reset OTP - Complaint Management System'
+        body = f'''
 Dear User,
 
 You requested to reset your password for the Complaint Management System.
@@ -134,7 +134,14 @@ If you did not request this, please ignore this email.
 Thank you,
 Complaint Management System
 '''
-    return send_email_notification(email, subject, body, mail)
+        msg = Message(subject, recipients=[email])
+        msg.body = body
+        mail.send(msg)
+        print(f"OTP email sent to {email}")
+        return True
+    except Exception as e:
+        print(f"Error sending email: {e}")
+        return False
 
 
 def create_notification(user_id, complaint_id, message, notification_type='status_update'):

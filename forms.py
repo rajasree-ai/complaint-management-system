@@ -99,7 +99,6 @@ class ResetPasswordForm(FlaskForm):
     confirm_password = PasswordField('Confirm Password', validators=[DataRequired(), EqualTo('new_password')])
     submit = SubmitField('Reset Password')
 
-
 class DepartmentForm(FlaskForm):
     name = StringField('Department Name', validators=[DataRequired()])
     hod_id = SelectField('Department Head (HOD)', choices=[], coerce=int)

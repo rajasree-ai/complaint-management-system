@@ -1378,7 +1378,6 @@ def delete_own_account():
 # ========== PASSWORD RESET ROUTES (SIMPLIFIED FOR RENDER) ==========
 @app.route('/forgot-password', methods=['GET', 'POST'])
 def forgot_password():
-    """Step 1: User enters email to get OTP"""
     if current_user.is_authenticated:
         return redirect(url_for('dashboard'))
     
@@ -1387,7 +1386,6 @@ def forgot_password():
     if form.validate_on_submit():
         email = form.email.data
         
-        # Check if email exists in database
         user = User.query.filter_by(email=email).first()
         
         if not user:
@@ -1398,75 +1396,24 @@ def forgot_password():
         otp = generate_otp()
         expires_at = datetime.utcnow() + timedelta(minutes=10)
         
-        # Delete any existing unused OTPs for this email
+        # Save to database
         PasswordResetOTP.query.filter_by(email=email, is_used=False).delete()
-        
-        # Save OTP to database
-        otp_record = PasswordResetOTP(
-            email=email,
-            otp=otp,
-            expires_at=expires_at
-        )
+        otp_record = PasswordResetOTP(email=email, otp=otp, expires_at=expires_at)
         db.session.add(otp_record)
         db.session.commit()
         
-        # Send OTP via email
+        # Try to send email
         email_sent = send_otp_email(email, otp, mail)
         
         if email_sent:
             flash('OTP has been sent to your email. It expires in 10 minutes.', 'success')
-            return redirect(url_for('reset_password', email=email))
         else:
-            flash('Failed to send OTP. Please try again.', 'danger')
-            return redirect(url_for('forgot_password'))
+            # Show OTP on screen (no email needed)
+            flash(f'⚠️ Email could not be sent. Your OTP is: {otp}', 'warning')
+        
+        return redirect(url_for('reset_password', email=email))
     
     return render_template('forgot_password.html', form=form)
-
-
-@app.route('/reset-password/<email>', methods=['GET', 'POST'])
-def reset_password(email):
-    """Step 2: User enters OTP and new password"""
-    if current_user.is_authenticated:
-        return redirect(url_for('dashboard'))
-    
-    # Check if user exists
-    user = User.query.filter_by(email=email).first()
-    if not user:
-        flash('Invalid request.', 'danger')
-        return redirect(url_for('login'))
-    
-    form = ResetPasswordForm()
-    
-    if form.validate_on_submit():
-        otp = form.otp.data
-        new_password = form.new_password.data
-        
-        # Find valid OTP
-        otp_record = PasswordResetOTP.query.filter_by(
-            email=email,
-            otp=otp,
-            is_used=False
-        ).order_by(PasswordResetOTP.created_at.desc()).first()
-        
-        # Check if OTP exists
-        if not otp_record:
-            flash('Invalid OTP. Please try again.', 'danger')
-            return redirect(url_for('reset_password', email=email))
-        
-        # Check if OTP is expired
-        if datetime.utcnow() > otp_record.expires_at:
-            flash('OTP has expired. Please request a new one.', 'danger')
-            return redirect(url_for('forgot_password'))
-        
-        # Update password
-        user.password = generate_password_hash(new_password)
-        otp_record.is_used = True
-        db.session.commit()
-        
-        flash('Password reset successful! Please login with your new password.', 'success')
-        return redirect(url_for('login'))
-    
-    return render_template('reset_password.html', form=form, email=email)
 # ========== TEMPORARY FIX ROUTES ==========
 
 @app.route('/fix-complaint-ids')

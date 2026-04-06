@@ -7,20 +7,20 @@ class User(UserMixin, db.Model):
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password = db.Column(db.String(200), nullable=False)
-    role = db.Column(db.String(20), default='student')  # student, staff/mentor, hod, admin
-    department = db.Column(db.String(100))
-    year = db.Column(db.String(20))
-    section = db.Column(db.String(10))
+    role = db.Column(db.String(20), default='student')  # student, hod, staff, admin
+    department = db.Column(db.String(100))  # Department name
+    year = db.Column(db.String(20))  # 1st year, 2nd year, etc.
+    section = db.Column(db.String(10))  # A, B, C
     parent_name = db.Column(db.String(100))
     parent_phone = db.Column(db.String(15))
     address = db.Column(db.Text)
-    mentor_name = db.Column(db.String(100))  # For students - who is their mentor
+    mentor_name = db.Column(db.String(100))
     phone = db.Column(db.String(15))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
-    # Relationships
     complaints = db.relationship('Complaint', backref='author', lazy=True, foreign_keys='Complaint.user_id')
     assigned_complaints = db.relationship('Complaint', backref='assigned_staff', lazy=True, foreign_keys='Complaint.assigned_to')
+
 
 class Department(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -28,7 +28,7 @@ class Department(db.Model):
     hod_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
-    hod = db.relationship('User', foreign_keys=[hod_id], backref='managed_department')
+    hod = db.relationship('User', foreign_keys=[hod_id])
 
 
 class Complaint(db.Model):
@@ -44,10 +44,11 @@ class Complaint(db.Model):
     
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     assigned_to = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
-    mentor_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)  # Make sure this exists
     
     comments = db.relationship('Comment', backref='complaint', lazy=True, cascade='all, delete-orphan')
     notifications = db.relationship('Notification', backref='complaint', lazy=True, cascade='all, delete-orphan')
+
+
 class Comment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     content = db.Column(db.Text, nullable=False)

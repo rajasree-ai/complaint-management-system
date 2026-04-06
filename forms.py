@@ -3,13 +3,13 @@ from wtforms import StringField, PasswordField, TextAreaField, SelectField, Subm
 from wtforms.validators import DataRequired, Email, EqualTo, Length, ValidationError
 from models import User, Department
 
+
 class RegistrationForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired(), Length(min=2, max=20)])
     email = StringField('Email', validators=[DataRequired(), Email()])
     password = PasswordField('Password', validators=[DataRequired(), Length(min=6)])
     confirm_password = PasswordField('Confirm Password', validators=[DataRequired(), EqualTo('password')])
     
-    # New fields
     department = SelectField('Department', choices=[], validators=[DataRequired()])
     year = SelectField('Year', choices=[
         ('1st Year', '1st Year'),
@@ -27,21 +27,67 @@ class RegistrationForm(FlaskForm):
     parent_phone = StringField('Parent/Guardian Phone', validators=[DataRequired(), Length(min=10, max=15)])
     address = TextAreaField('Address', validators=[DataRequired()])
     
-    submit = SubmitField('Sign Up')
+    submit = SubmitField('Register')
     
     def __init__(self, *args, **kwargs):
         super(RegistrationForm, self).__init__(*args, **kwargs)
-        self.department.choices = [(d.name, d.name) for d in Department.query.order_by(Department.name).all()]
+        departments = Department.query.order_by(Department.name).all()
+        if departments:
+            self.department.choices = [(d.name, d.name) for d in departments]
+        else:
+            self.department.choices = [('', 'No departments available')]
     
     def validate_username(self, username):
         user = User.query.filter_by(username=username.data).first()
         if user:
-            raise ValidationError('Username already exists.')
+            raise ValidationError('Username already exists. Please choose a different one.')
     
     def validate_email(self, email):
         user = User.query.filter_by(email=email.data).first()
         if user:
             raise ValidationError('Email already registered.')
+
+
+class LoginForm(FlaskForm):
+    email = StringField('Email', validators=[DataRequired(), Email()])
+    password = PasswordField('Password', validators=[DataRequired()])
+    submit = SubmitField('Login')
+
+
+class ComplaintForm(FlaskForm):
+    title = StringField('Title', validators=[DataRequired(), Length(max=100)])
+    description = TextAreaField('Description', validators=[DataRequired()])
+    category = SelectField('Category', choices=[
+        ('academic', 'Academic'),
+        ('administrative', 'Administrative'),
+        ('facility', 'Facility'),
+        ('harassment', 'Harassment'),
+        ('technical', 'Technical'),
+        ('other', 'Other')
+    ], validators=[DataRequired()])
+    priority = SelectField('Priority', choices=[
+        ('low', 'Low'),
+        ('medium', 'Medium'),
+        ('high', 'High')
+    ], default='medium')
+    mentor_id = SelectField('Assign to Mentor (Optional)', choices=[], coerce=int, default=0)
+    submit = SubmitField('Submit Complaint')
+
+
+class CommentForm(FlaskForm):
+    content = TextAreaField('Add a comment', validators=[DataRequired()])
+    submit = SubmitField('Post Comment')
+
+
+class UpdateComplaintForm(FlaskForm):
+    status = SelectField('Status', choices=[
+        ('pending', 'Pending'),
+        ('in_progress', 'In Progress'),
+        ('resolved', 'Resolved'),
+        ('rejected', 'Rejected')
+    ])
+    assigned_to = SelectField('Assign To', choices=[], coerce=int)
+    submit = SubmitField('Update')
 
 
 class ForgotPasswordForm(FlaskForm):
@@ -63,4 +109,5 @@ class DepartmentForm(FlaskForm):
     
     def __init__(self, *args, **kwargs):
         super(DepartmentForm, self).__init__(*args, **kwargs)
-        self.hod_id.choices = [(0, 'Select HOD')] + [(u.id, f"{u.username} ({u.email})") for u in User.query.filter_by(role='hod').all()]
+        users = User.query.all()
+        self.hod_id.choices = [(0, 'Select HOD')] + [(u.id, f"{u.username} ({u.email})") for u in users]

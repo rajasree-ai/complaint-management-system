@@ -14,4 +14,4 @@ class Config:
     MAIL_USE_SSL = False
     MAIL_USERNAME = 'apikey'  # SendGrid uses 'apikey' as username
     MAIL_PASSWORD = os.environ.get('SENDGRID_API_KEY')  # Set this in Render env vars
-    MAIL_DEFAULT_SENDER = 'your-verified-email@example.com'  # Verify this in SendGrid
+    MAIL_DEFAULT_SENDER = 'esec196@gmail.com'  # Verify this in SendGrid

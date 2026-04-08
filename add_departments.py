@@ -26,18 +26,17 @@ with app.app_context():
         'MCA'
     ]
     
-    # Check if departments already exist
-    existing_depts = Department.query.all()
-    
-    if not existing_depts:
-        for dept_name in departments:
-            dept = Department(name=dept_name)
-            db.session.add(dept)
+    # Check which departments already exist
+    existing_names = {dept.name for dept in Department.query.all()}
+    added_count = 0
+    for dept_name in departments:
+        if dept_name not in existing_names:
+            db.session.add(Department(name=dept_name))
             print(f"Added department: {dept_name}")
-        
+            added_count += 1
+    
+    if added_count > 0:
         db.session.commit()
-        print(f"\n✅ Added {len(departments)} departments successfully!")
+        print(f"\n✅ Added {added_count} new departments successfully!")
     else:
-        print(f"Departments already exist: {len(existing_depts)} found")
-        for dept in existing_depts:
-            print(f"  - {dept.name}")
+        print(f"No new departments were added. {len(existing_names)} departments already exist.")

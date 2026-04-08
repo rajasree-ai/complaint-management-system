@@ -16,7 +16,7 @@ with app.app_context():
         {'username': 'hod_ee', 'email': 'hod.ee@college.edu', 'password': 'hod@123', 'department': 'Electrical and Electronics'},
         {'username': 'hod_mech', 'email': 'hod.mech@college.edu', 'password': 'hod@123', 'department': 'Mechanical Engineering'},
         {'username': 'hod_civil', 'email': 'hod.civil@college.edu', 'password': 'hod@123', 'department': 'Civil Engineering'},
-        {'username': 'hod_ads', 'email': 'hod.aids@college.edu', 'password': 'hod@123', 'department': 'Artificial Intelligence and Data Science'},
+        {'username': 'hod_ads', 'email': 'hod.ads@college.edu', 'password': 'hod@123', 'department': 'Artificial Intelligence and Data Science'},
     ]
     
     created_count = 0

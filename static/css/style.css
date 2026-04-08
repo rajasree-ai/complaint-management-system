@@ -7,6 +7,10 @@
     transform: scale(1.05);
 }
 
+.no-card-hover:hover {
+    transform: none !important;
+}
+
 .gradient-text {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     -webkit-background-clip: text;

@@ -10,6 +10,7 @@ class RegistrationForm(FlaskForm):
     password = PasswordField('Password', validators=[DataRequired(), Length(min=6)])
     confirm_password = PasswordField('Confirm Password', validators=[DataRequired(), EqualTo('password')])
     
+    # Student-specific fields
     department = SelectField('Department', choices=[], validators=[DataRequired()])
     year = SelectField('Year', choices=[
         ('1st Year', '1st Year'),
@@ -31,22 +32,21 @@ class RegistrationForm(FlaskForm):
     
     def __init__(self, *args, **kwargs):
         super(RegistrationForm, self).__init__(*args, **kwargs)
+        from models import Department
         departments = Department.query.order_by(Department.name).all()
-        if departments:
-            self.department.choices = [(d.name, d.name) for d in departments]
-        else:
-            self.department.choices = [('', 'No departments available')]
+        self.department.choices = [(d.name, d.name) for d in departments] if departments else [('', 'No departments available')]
     
     def validate_username(self, username):
+        from models import User
         user = User.query.filter_by(username=username.data).first()
         if user:
-            raise ValidationError('Username already exists. Please choose a different one.')
+            raise ValidationError('Username already exists.')
     
     def validate_email(self, email):
+        from models import User
         user = User.query.filter_by(email=email.data).first()
         if user:
             raise ValidationError('Email already registered.')
-
 
 class LoginForm(FlaskForm):
     email = StringField('Email', validators=[DataRequired(), Email()])
@@ -72,8 +72,6 @@ class ComplaintForm(FlaskForm):
     ], default='medium')
     mentor_id = SelectField('Assign to Mentor (Optional)', choices=[], coerce=int, default=0)
     submit = SubmitField('Submit Complaint')
-
-
 class CommentForm(FlaskForm):
     content = TextAreaField('Add a comment', validators=[DataRequired()])
     submit = SubmitField('Post Comment')

@@ -1,11 +1,20 @@
 import random
 import string
 import re
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from flask_mail import Message
 from models import Complaint, Notification, PasswordResetOTP, Department, User
 from database import db
-import time
+
+
+def utc_to_local(utc_dt):
+    """Convert UTC datetime to local timezone"""
+    if utc_dt is None:
+        return None
+    # Assuming local timezone is IST (+5:30), adjust as needed
+    local_tz = timezone(timedelta(hours=5, minutes=30))
+    return utc_dt.replace(tzinfo=timezone.utc).astimezone(local_tz)
+
 
 def generate_complaint_id():
     """Generate sequential complaint ID in format ESEC01, ESEC02, etc."""
@@ -28,19 +37,17 @@ def generate_complaint_id():
     else:
         return f'ESEC{new_number:03d}'
 
+
 def send_email_notification(recipient_email, subject, body, mail):
-    """Send email notification with better error handling"""
+    """Send email notification"""
     try:
-        msg = Message(
-            subject=subject,
-            recipients=[recipient_email],
-            body=body
-        )
+        msg = Message(subject, recipients=[recipient_email])
+        msg.body = body
         mail.send(msg)
         print(f"✅ Email sent to {recipient_email}")
         return True
     except Exception as e:
-        print(f"❌ Error sending email to {recipient_email}: {str(e)}")
+        print(f"❌ Error sending email to {recipient_email}: {e}")
         return False
 
 
@@ -111,15 +118,15 @@ Complaint Management System
 '''
     return send_email_notification(complaint.author.email, subject, body, mail)
 
+
 def generate_otp():
     """Generate a 6-digit OTP"""
     return ''.join(random.choices(string.digits, k=6))
 
 
 def send_otp_email(email, otp, mail):
-    """Send OTP to user's email with retry logic"""
-    
-    subject = 'Password Reset OTP - Complaint Management System'
+    """Send OTP for password reset"""
+    subject = 'Password Reset OTP'
     body = f'''
 Dear User,
 
@@ -134,21 +141,7 @@ If you did not request this, please ignore this email.
 Thank you,
 Complaint Management System
 '''
-    
-    # Try multiple times with delay
-    for attempt in range(3):
-        try:
-            msg = Message(subject, recipients=[email])
-            msg.body = body
-            mail.send(msg)
-            print(f"✅ OTP email sent to {email} on attempt {attempt + 1}")
-            return True
-        except Exception as e:
-            print(f"❌ Attempt {attempt + 1} failed: {e}")
-            if attempt < 2:
-                time.sleep(2)  # Wait 2 seconds before retry
-    
-    return False
+    return send_email_notification(email, subject, body, mail)
 
 
 def create_notification(user_id, complaint_id, message, notification_type='status_update'):

@@ -12,22 +12,22 @@ with app.app_context():
     print("Creating departments...")
     depts = [
         'Computer Science and Engineering',
-            'Information Technology', 
-            'Electronics and Communication Engineering',
-            'Electrical and Electronics Engineering',
-            'Mechanical Engineering',
-            'Civil Engineering',
-            'Artificial Intelligence and Data Science',
-            'Artificial Intelligence and Machine Learning',
-            'Computer Science and Design',
-            'Biomedical Engineering',
-            'Robotics and Automation',
-            'Chemical Engineering',
-            'Agricultural Engineering',
-            'Biotechnology',
-            'Cyber Security',
-            'MBA',
-            'MCA'
+        'Information Technology',
+        'Electronics and Communication Engineering',
+        'Electrical and Electronics Engineering',
+        'Mechanical Engineering',
+        'Civil Engineering',
+        'Artificial Intelligence and Data Science',
+        'Artificial Intelligence and Machine Learning',
+        'Computer Science and Design',
+        'Biomedical Engineering',
+        'Robotics and Automation',
+        'Chemical Engineering',
+        'Agricultural Engineering',
+        'Biotechnology',
+        'Cyber Security',
+        'MBA',
+        'MCA'
     ]
     for dept in depts:
         db.session.add(Department(name=dept))

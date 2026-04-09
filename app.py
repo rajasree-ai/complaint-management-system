@@ -1313,7 +1313,6 @@ def edit_department(dept_id):
     
     return render_template('edit_department.html', form=form, department=department)
 
-
 @app.route('/admin/department/<int:id>/delete', methods=['POST'])
 @login_required
 def delete_department(id):
@@ -1324,13 +1323,13 @@ def delete_department(id):
 
     if total_users > 0:
         flash("Cannot delete department. Users are assigned to it.", "danger")
-        return redirect(url_for('admin_departments'))
+        return redirect(url_for('manage_departments'))  # ✅ FIXED
 
     db.session.delete(department)
     db.session.commit()
 
     flash("Department deleted successfully!", "success")
-    return redirect(url_for('admin_departments'))
+    return redirect(url_for('manage_departments'))  # ✅ FIXED
 
 # ========== NOTIFICATION & PROFILE ROUTES ==========
 

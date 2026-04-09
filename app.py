@@ -1314,26 +1314,23 @@ def edit_department(dept_id):
     return render_template('edit_department.html', form=form, department=department)
 
 
-@app.route('/admin/department/<int:dept_id>/delete', methods=['POST'])
+@app.route('/admin/department/<int:id>/delete', methods=['POST'])
 @login_required
-def delete_department(dept_id):
-    if not is_super_admin(current_user):
-        abort(403)
-    
-    department = Department.query.get_or_404(dept_id)
-    
-    # Check if department has any users
-    total_users = department.student_count + department.staff_count
+def delete_department(id):
+    department = Department.query.get_or_404(id)
+
+    # Count users in this department
+    total_users = User.query.filter_by(department=department.name).count()
+
     if total_users > 0:
-        flash(f'Cannot delete department "{department.name}" - it has {total_users} user(s) assigned.', 'danger')
-        return redirect(url_for('manage_departments'))
-    
-    # Delete the department
+        flash("Cannot delete department. Users are assigned to it.", "danger")
+        return redirect(url_for('admin_departments'))
+
     db.session.delete(department)
     db.session.commit()
-    flash(f'Department "{department.name}" deleted successfully!', 'success')
-    return redirect(url_for('manage_departments'))
 
+    flash("Department deleted successfully!", "success")
+    return redirect(url_for('admin_departments'))
 
 # ========== NOTIFICATION & PROFILE ROUTES ==========
 

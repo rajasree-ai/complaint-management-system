@@ -2,9 +2,9 @@ import random
 import string
 import re
 from datetime import datetime, timedelta, timezone
-from flask_mail import Message
 from models import Complaint, Notification, PasswordResetOTP, Department, User
 from database import db
+from email_service import send_email
 
 
 def utc_to_local(utc_dt):
@@ -38,20 +38,22 @@ def generate_complaint_id():
         return f'ESEC{new_number:03d}'
 
 
-def send_email_notification(recipient_email, subject, body, mail):
+def send_email_notification(recipient_email, subject, body, mail=None):
     """Send email notification"""
+    html_content = body.replace('\n', '<br>')
     try:
-        msg = Message(subject, recipients=[recipient_email])
-        msg.body = body
-        mail.send(msg)
-        print(f"✅ Email sent to {recipient_email}")
-        return True
+        success = send_email(recipient_email, subject, html_content)
+        if success:
+            print(f"✅ Email sent to {recipient_email}")
+            return True
+        print(f"❌ Failed to send email to {recipient_email}")
+        return False
     except Exception as e:
         print(f"❌ Error sending email to {recipient_email}: {e}")
         return False
 
 
-def send_complaint_registration_email(complaint, mail):
+def send_complaint_registration_email(complaint, mail=None):
     """Send email when complaint is registered"""
     subject = f'Complaint Registered: {complaint.complaint_id}'
     body = f'''
@@ -76,7 +78,7 @@ Complaint Management System
     return send_email_notification(complaint.author.email, subject, body, mail)
 
 
-def send_comment_notification(complaint, comment, mail):
+def send_comment_notification(complaint, comment, mail=None):
     """Send email when a comment is added to a complaint"""
     subject = f'New Comment on Complaint: {complaint.complaint_id}'
     body = f'''
@@ -97,7 +99,7 @@ Complaint Management System
     return send_email_notification(complaint.author.email, subject, body, mail)
 
 
-def send_status_update_email(complaint, old_status, mail):
+def send_status_update_email(complaint, old_status, mail=None):
     """Send email when complaint status changes"""
     subject = f'Complaint Status Updated: {complaint.complaint_id}'
     body = f'''
@@ -124,7 +126,7 @@ def generate_otp():
     return ''.join(random.choices(string.digits, k=6))
 
 
-def send_otp_email(email, otp, mail):
+def send_otp_email(email, otp, mail=None):
     """Send OTP for password reset"""
     subject = 'Password Reset OTP'
     body = f'''

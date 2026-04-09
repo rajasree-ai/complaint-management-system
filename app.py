@@ -1,7 +1,6 @@
 from flask import Flask, render_template, redirect, url_for, flash, request, abort, jsonify
 from flask_login import login_user, current_user, logout_user, login_required
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask_mail import Mail
 from datetime import datetime, timedelta
 from sqlalchemy.exc import IntegrityError
 import logging
@@ -33,7 +32,6 @@ app.config.from_object(Config)
 # Initialize extensions
 db.init_app(app)
 login_manager.init_app(app)
-mail = Mail(app)
 
 # Add Jinja2 filter for timezone conversion
 @app.template_filter('localtime')
@@ -264,7 +262,7 @@ You can now register complaints and track their status.
 Thank you,
 Complaint Management System
 '''
-        send_email_notification(user.email, subject, body, mail)
+        send_email_notification(user.email, subject, body)
         
         flash('Your account has been created! You can now log in.', 'success')
         return redirect(url_for('login'))
@@ -346,7 +344,7 @@ Please login and change your password for security.
 Thank you,
 Complaint Management System
 '''
-        send_email_notification(email, subject, body, mail)
+        send_email_notification(email, subject, body)
         
         flash('Staff account created successfully! Please login.', 'success')
         return redirect(url_for('login'))
@@ -567,7 +565,7 @@ Thank you,
 Complaint Management System
 '''
     
-    send_email_notification(student.email, subject, email_body, mail)
+    send_email_notification(student.email, subject, email_body)
     
     create_notification(
         student.id,
@@ -682,7 +680,7 @@ def new_complaint():
         db.session.add(complaint)
         db.session.commit()
         
-        send_complaint_registration_email(complaint, mail)
+        send_complaint_registration_email(complaint)
         
         if mentor_id:
             mentor = User.query.get(mentor_id)
@@ -710,7 +708,7 @@ Please review and take appropriate action.
 Thank you,
 Complaint Management System
 '''
-                send_email_notification(mentor.email, mentor_subject, mentor_body, mail)
+                send_email_notification(mentor.email, mentor_subject, mentor_body)
         
         hod_dept = get_hod_department_by_name(current_user.department)
         if hod_dept and hod_dept.hod_id:
@@ -820,7 +818,7 @@ def complaint_details(complaint_id):
         db.session.add(comment)
         db.session.commit()
         
-        send_comment_notification(complaint, comment, mail)
+        send_comment_notification(complaint, comment)
         
         if complaint.user_id != current_user.id:
             create_notification(
@@ -861,7 +859,7 @@ def complaint_details(complaint_id):
                 f'Your complaint status has been updated from {old_status} to {complaint.status}',
                 'status_update'
             )
-            send_status_update_email(complaint, old_status, mail)
+            send_status_update_email(complaint, old_status)
         
         flash('Complaint updated successfully!', 'success')
         return redirect(url_for('complaint_details', complaint_id=complaint.id))
@@ -893,7 +891,7 @@ def resolve_complaint(complaint_id):
         f'Your complaint has been marked as resolved!',
         'status_update'
     )
-    send_status_update_email(complaint, old_status, mail)
+    send_status_update_email(complaint, old_status)
     
     flash(f'Complaint marked as resolved!', 'success')
     return redirect(url_for('complaint_details', complaint_id=complaint.id))
@@ -1182,7 +1180,7 @@ Please login and change your password for security.
 Thank you,
 Complaint Management System
 '''
-        send_email_notification(email, subject, body, mail)
+        send_email_notification(email, subject, body)
         
         flash(f'Staff/Mentor "{username}" added to {current_user.department} department!', 'success')
         return redirect(url_for('department_users'))
@@ -1402,7 +1400,7 @@ def forgot_password():
             db.session.add(reset_request)
             db.session.commit()
             
-            send_otp_email(user.email, otp, mail)
+            send_otp_email(user.email, otp)
             flash('OTP has been sent to your email. It expires in 10 minutes.', 'info')
             return redirect(url_for('reset_password', email=user.email))
         else:

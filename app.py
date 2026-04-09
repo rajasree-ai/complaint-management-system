@@ -243,11 +243,11 @@ def register():
         db.session.add(user)
         db.session.commit()
         
-        subject = 'Welcome to Complaint Management System'
+        subject = 'Welcome to Grievance Hub - Student Account'
         body = f'''
 Dear {user.username},
 
-Welcome to the Complaint Management System!
+Welcome to the Grievance Hub!
 
 Your account has been successfully created.
 
@@ -260,7 +260,6 @@ Department: {user.department}
 You can now register complaints and track their status.
 
 Thank you,
-Complaint Management System
 '''
         send_email_notification(user.email, subject, body)
         
@@ -319,11 +318,11 @@ def register_staff():
             flash('A user with that username or email already exists.', 'danger')
             return redirect(url_for('register_staff'))
         
-        subject = 'Welcome to Complaint Management System - Staff Account'
+        subject = 'Welcome to Grievance Hub - Staff Account'
         body = f'''
 Dear {username},
 
-Welcome to the Complaint Management System!
+Welcome to the Grievance Hub!
 
 Your staff account has been successfully created.
 
@@ -342,7 +341,6 @@ You can now:
 Please login and change your password for security.
 
 Thank you,
-Complaint Management System
 '''
         send_email_notification(email, subject, body)
         
@@ -1158,7 +1156,7 @@ def add_department_staff():
         body = f'''
 Dear {username},
 
-Welcome to the Complaint Management System!
+Welcome to the Grievance Hub!
 
 Your staff account has been successfully created.
 
@@ -1178,7 +1176,6 @@ You can now:
 Please login and change your password for security.
 
 Thank you,
-Complaint Management System
 '''
         send_email_notification(email, subject, body)
         

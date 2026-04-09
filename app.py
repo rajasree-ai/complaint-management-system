@@ -28,7 +28,12 @@ from sqlalchemy import inspect, text
 # Initialize Flask app
 app = Flask(__name__)
 app.config.from_object(Config)
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
 
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+    "pool_pre_ping": True,
+    "pool_recycle": 280,
+}
 # Initialize extensions
 db.init_app(app)
 login_manager.init_app(app)
@@ -259,7 +264,7 @@ Department: {user.department}
 
 You can now register complaints and track their status.
 
-Thank you,
+Thank you
 '''
         send_email_notification(user.email, subject, body)
         
@@ -340,7 +345,7 @@ You can now:
 
 Please login and change your password for security.
 
-Thank you,
+Thank you
 '''
         send_email_notification(email, subject, body)
         
@@ -559,8 +564,7 @@ Dear {student.username},
 This message was sent by your mentor: {current_user.username}
 Department: {current_user.department}
 
-Thank you,
-Complaint Management System
+Thank you
 '''
     
     send_email_notification(student.email, subject, email_body)
@@ -703,8 +707,7 @@ Priority: {complaint.priority}
 
 Please review and take appropriate action.
 
-Thank you,
-Complaint Management System
+Thank you
 '''
                 send_email_notification(mentor.email, mentor_subject, mentor_body)
         
@@ -1175,7 +1178,7 @@ You can now:
 
 Please login and change your password for security.
 
-Thank you,
+Thank you
 '''
         send_email_notification(email, subject, body)
         

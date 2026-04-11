@@ -735,14 +735,21 @@ def view_complaints():
     assigned_to_filter = request.args.get('assigned_to', '')
     
     if is_super_admin(current_user):
-        query = Complaint.query
+      query = Complaint.query
+
     elif is_department_admin(current_user):
-        query = Complaint.query.join(User, Complaint.user_id == User.id).filter(User.department == current_user.department)
+      query = Complaint.query.join(User, Complaint.user_id == User.id)\
+        .filter(User.department == current_user.department)
+
     elif current_user.role == 'staff':
-        query = Complaint.query.filter(Complaint.assigned_to == current_user.id)
+       query = Complaint.query.filter(Complaint.assigned_to == current_user.id)
+
+    elif current_user.role == 'mentor':   # ✅ ADD THIS
+       query = Complaint.query.join(User, Complaint.user_id == User.id)\
+        .filter(User.department == current_user.department)
+
     else:
-        query = Complaint.query.filter_by(user_id=current_user.id)
-    
+      query = Complaint.query.filter_by(user_id=current_user.id)
     if assigned_to_filter and assigned_to_filter.isdigit():
         query = query.filter(Complaint.assigned_to == int(assigned_to_filter))
     
@@ -1155,7 +1162,7 @@ def add_department_staff():
         db.session.add(staff)
         db.session.commit()
         
-        subject = 'Welcome to Complaint Management System - Staff Account'
+        subject = 'Welcome to Grievance Hub - Staff Account'
         body = f'''
 Dear {username},
 

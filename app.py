@@ -739,13 +739,13 @@ def view_complaints():
         query = Complaint.query
 
     elif current_user.role == 'admin':
-        query = Complaint.query.join(User).filter(
+        query = Complaint.query.join(User, Complaint.user_id == User.id).filter(
             User.department == current_user.department
         )
 
     elif current_user.role in ['staff', 'mentor']:
         # staff & mentor can see department complaints
-        query = Complaint.query.join(User).filter(
+        query = Complaint.query.join(User, Complaint.user_id == User.id).filter(
             User.department == current_user.department
         )
 

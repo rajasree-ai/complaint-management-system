@@ -87,7 +87,7 @@ def get_user_accessible_complaints(user):
         return Complaint.query.all()
     elif is_department_admin(user):
         return Complaint.query.join(User, Complaint.user_id == User.id).filter(User.department == user.department).all()
-    elif user.role == 'staff':
+    elif user.role in ['staff', 'mentor']:
         return Complaint.query.filter((Complaint.assigned_to == user.id) | (Complaint.mentor_id == user.id)).all()
     else:
         return Complaint.query.filter_by(user_id=user.id).all()
@@ -109,7 +109,7 @@ def can_view_complaint(user, complaint):
     if is_department_admin(user):
         author = User.query.get(complaint.user_id)
         return author.department == user.department
-    elif user.role == 'staff':
+    elif user.role in ['staff', 'mentor']:
         return complaint.assigned_to == user.id or complaint.mentor_id == user.id
     else:
         return complaint.user_id == user.id
@@ -122,7 +122,7 @@ def can_update_complaint(user, complaint):
     if is_department_admin(user):
         author = User.query.get(complaint.user_id)
         return author.department == user.department
-    elif user.role == 'staff':
+    elif user.role in ['staff', 'mentor']:
         return complaint.assigned_to == user.id or complaint.mentor_id == user.id
     return False
 
@@ -134,7 +134,7 @@ def can_delete_complaint(user, complaint):
     if is_department_admin(user):
         author = User.query.get(complaint.user_id)
         return author.department == user.department and complaint.status in ['resolved', 'rejected']
-    elif user.role == 'staff':
+    elif user.role in ['staff', 'mentor']:
         return (complaint.assigned_to == user.id or complaint.mentor_id == user.id) and complaint.status in ['resolved', 'rejected']
     else:
         return complaint.user_id == user.id and complaint.status in ['resolved', 'rejected']
@@ -387,7 +387,7 @@ def dashboard():
         return redirect(url_for('super_admin_dashboard'))
     elif is_department_admin(current_user):
         return redirect(url_for('hod_dashboard'))
-    elif current_user.role == 'staff':
+    elif current_user.role in ['staff', 'mentor']:
         return redirect(url_for('staff_dashboard'))
     else:
         complaints = Complaint.query.filter_by(user_id=current_user.id).all()
@@ -786,21 +786,12 @@ def view_complaints():
 
 @app.route('/complaint/<int:complaint_id>', methods=['GET', 'POST'])
 @login_required
+
 def complaint_details(complaint_id):
     complaint = Complaint.query.get_or_404(complaint_id)
     
-    if is_super_admin(current_user):
-        pass
-    elif is_department_admin(current_user):
-        author = User.query.get(complaint.user_id)
-        if author.department != current_user.department:
-            abort(403)
-    elif current_user.role == 'staff':
-        if complaint.assigned_to != current_user.id and complaint.mentor_id != current_user.id:
-            abort(403)
-    else:
-        if complaint.user_id != current_user.id:
-            abort(403)
+    if not can_view_complaint(current_user, complaint):
+        abort(403)
     
     comment_form = CommentForm()
     update_form = UpdateComplaintForm()
@@ -817,7 +808,7 @@ def complaint_details(complaint_id):
         dept_staff = User.query.filter_by(department=current_user.department, role='staff').all()
         staff_users = dept_staff
         update_form.assigned_to.choices = [(0, 'Unassigned')] + [(u.id, u.username) for u in dept_staff]
-    elif current_user.role == 'staff':
+    elif current_user.role in ['staff', 'mentor']:
         update_form.assigned_to.choices = [(current_user.id, current_user.username + ' (You)')]
         update_form.assigned_to.data = current_user.id
     
@@ -851,7 +842,7 @@ def complaint_details(complaint_id):
             author = User.query.get(complaint.user_id)
             if author.department == current_user.department:
                 can_update = True
-        elif current_user.role == 'staff' and (complaint.assigned_to == current_user.id or complaint.mentor_id == current_user.id):
+        elif current_user.role in ['staff', 'mentor'] and (complaint.assigned_to == current_user.id or complaint.mentor_id == current_user.id):
             can_update = True
         
         if not can_update:
@@ -924,7 +915,7 @@ def delete_complaint(complaint_id):
             can_delete = True
     elif complaint.user_id == current_user.id:
         can_delete = True
-    elif current_user.role == 'staff' and (complaint.assigned_to == current_user.id or complaint.mentor_id == current_user.id):
+    elif current_user.role in ['staff', 'mentor'] and (complaint.assigned_to == current_user.id or complaint.mentor_id == current_user.id):
         can_delete = True
     
     if complaint.status not in ['resolved', 'rejected']:
@@ -950,7 +941,7 @@ def delete_complaint(complaint_id):
             return redirect(url_for('super_admin_dashboard'))
         elif is_department_admin(current_user):
             return redirect(url_for('hod_dashboard'))
-        elif current_user.role == 'staff':
+        elif current_user.role in ['staff', 'mentor']:
             return redirect(url_for('staff_dashboard'))
         else:
             return redirect(url_for('view_complaints'))

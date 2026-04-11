@@ -733,52 +733,56 @@ def view_complaints():
     category_filter = request.args.get('category', '')
     status_filter = request.args.get('status', '')
     assigned_to_filter = request.args.get('assigned_to', '')
-    
-    if is_super_admin(current_user):
-      query = Complaint.query
 
-    elif is_department_admin(current_user):
-      query = Complaint.query.join(User, Complaint.user_id == User.id)\
-        .filter(User.department == current_user.department)
+    # ROLE BASED ACCESS
+    if current_user.role == 'super-admin':
+        query = Complaint.query
 
-    elif current_user.role == 'staff':
-       query = Complaint.query.filter(Complaint.assigned_to == current_user.id)
+    elif current_user.role == 'admin':
+        query = Complaint.query.join(User).filter(
+            User.department == current_user.department
+        )
 
-    elif current_user.role == 'mentor':   # ✅ ADD THIS
-       query = Complaint.query.join(User, Complaint.user_id == User.id)\
-        .filter(User.department == current_user.department)
+    elif current_user.role in ['staff', 'mentor']:
+        # staff & mentor can see department complaints
+        query = Complaint.query.join(User).filter(
+            User.department == current_user.department
+        )
 
-    else:
-      query = Complaint.query.filter_by(user_id=current_user.id)
+    else:  # student
+        query = Complaint.query.filter_by(user_id=current_user.id)
+
+    # FILTERS (keep your filters)
     if assigned_to_filter and assigned_to_filter.isdigit():
         query = query.filter(Complaint.assigned_to == int(assigned_to_filter))
-    
+
     if search_query:
         query = query.filter(
             Complaint.complaint_id.ilike(f'%{search_query}%') |
             Complaint.title.ilike(f'%{search_query}%')
         )
-    
+
     if category_filter:
         query = query.filter_by(category=category_filter)
-    
+
     if status_filter:
         query = query.filter_by(status=status_filter)
-    
+
     complaints = query.order_by(Complaint.created_at.desc()).all()
-    
+
     categories = Complaint.query.with_entities(Complaint.category).distinct().all()
     statuses = ['pending', 'in_progress', 'resolved', 'rejected']
-    
-    return render_template('view_complaints.html', 
-                         complaints=complaints,
-                         categories=[c[0] for c in categories],
-                         statuses=statuses,
-                         search_query=search_query,
-                         category_filter=category_filter,
-                         status_filter=status_filter,
-                         assigned_to_filter=assigned_to_filter)
 
+    return render_template(
+        'view_complaints.html',
+        complaints=complaints,
+        categories=[c[0] for c in categories],
+        statuses=statuses,
+        search_query=search_query,
+        category_filter=category_filter,
+        status_filter=status_filter,
+        assigned_to_filter=assigned_to_filter
+    )
 
 @app.route('/complaint/<int:complaint_id>', methods=['GET', 'POST'])
 @login_required

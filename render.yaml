@@ -13,3 +13,4 @@ services:
         fromDatabase:
           name: complaint-db
           property: connectionString
+          

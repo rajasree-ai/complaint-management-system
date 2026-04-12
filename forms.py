@@ -1,5 +1,5 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, TextAreaField, SelectField, SubmitField
+from wtforms import StringField, PasswordField, TextAreaField, SelectField, SubmitField, SelectMultipleField
 from wtforms.validators import DataRequired, Email, EqualTo, Length, ValidationError
 from models import User, Department
 
@@ -109,3 +109,36 @@ class DepartmentForm(FlaskForm):
         super(DepartmentForm, self).__init__(*args, **kwargs)
         users = User.query.all()
         self.hod_id.choices = [(0, 'Select HOD')] + [(u.id, f"{u.username} ({u.email})") for u in users]
+
+
+class StudentStaffAssignmentForm(FlaskForm):
+    staff_member = SelectField('Staff Member', choices=[], coerce=int, validators=[DataRequired()])
+    students = SelectMultipleField('Students to Assign', choices=[], coerce=int, validators=[DataRequired()])
+    notes = TextAreaField('Assignment Notes (Optional)', validators=[Length(max=500)])
+    submit = SubmitField('Assign Students')
+    
+    def __init__(self, department_name, *args, **kwargs):
+        super(StudentStaffAssignmentForm, self).__init__(*args, **kwargs)
+        # Get staff members in the department
+        staff_list = User.query.filter_by(department=department_name, role='staff').all()
+        self.staff_member.choices = [(0, 'Select Staff Member')] + [(s.id, f"{s.username} ({s.email})") for s in staff_list]
+        
+        # Get students in the department
+        student_list = User.query.filter_by(department=department_name, role='student').all()
+        self.students.choices = [(st.id, f"{st.username} - {st.year} {st.section}") for st in student_list]
+
+
+class RemoveStudentAssignmentForm(FlaskForm):
+    submit = SubmitField('Remove Assignment')
+
+
+class StaffStudentAssignmentForm(FlaskForm):
+    students = SelectMultipleField('Students to Assign to Yourself', choices=[], coerce=int, validators=[DataRequired()])
+    notes = TextAreaField('Assignment Notes (Optional)', validators=[Length(max=500)])
+    submit = SubmitField('Assign Students to Me')
+    
+    def __init__(self, department_name, *args, **kwargs):
+        super(StaffStudentAssignmentForm, self).__init__(*args, **kwargs)
+        # Get students in the department
+        student_list = User.query.filter_by(department=department_name, role='student').all()
+        self.students.choices = [(st.id, f"{st.username} - {st.year} {st.section}") for st in student_list]

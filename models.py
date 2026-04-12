@@ -82,3 +82,20 @@ class PasswordResetOTP(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     expires_at = db.Column(db.DateTime, nullable=False)
     is_used = db.Column(db.Boolean, default=False)
+
+
+class StudentStaffAssignment(db.Model):
+    """Model to track student-staff assignments within departments"""
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False)
+    staff_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False)
+    department = db.Column(db.String(100), nullable=False)
+    assigned_at = db.Column(db.DateTime, default=datetime.utcnow)
+    notes = db.Column(db.Text, nullable=True)
+    
+    # Relationships
+    student = db.relationship('User', foreign_keys=[student_id], backref='staff_assignments')
+    staff = db.relationship('User', foreign_keys=[staff_id], backref='assigned_students')
+    
+    # Ensure one staff member is assigned to one student only once per department
+    __table_args__ = (db.UniqueConstraint('student_id', 'staff_id', 'department', name='unique_student_staff_dept'),)

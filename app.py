@@ -12,10 +12,11 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from config import Config
 from database import db, login_manager
-from models import User, Complaint, Comment, Notification, Department, PasswordResetOTP
+from models import User, Complaint, Comment, Notification, Department, PasswordResetOTP, StudentStaffAssignment
 from forms import (
     RegistrationForm, LoginForm, ComplaintForm, CommentForm, UpdateComplaintForm,
-    ForgotPasswordForm, ResetPasswordForm, DepartmentForm
+    ForgotPasswordForm, ResetPasswordForm, DepartmentForm, 
+    RemoveStudentAssignmentForm, StaffStudentAssignmentForm
 )
 from utils import (
     generate_complaint_id, send_email_notification, create_notification, 
@@ -28,7 +29,6 @@ from sqlalchemy import inspect, text
 # Initialize Flask app
 app = Flask(__name__)
 app.config.from_object(Config)
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
 
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     "pool_pre_ping": True,
@@ -42,6 +42,15 @@ login_manager.init_app(app)
 @app.template_filter('localtime')
 def localtime_filter(utc_dt):
     return utc_to_local(utc_dt)
+
+
+# Add Jinja2 filter for date formatting
+@app.template_filter('strftime')
+def strftime_filter(dt, fmt='%d-%m-%Y'):
+    """Format datetime using strftime"""
+    if dt is None:
+        return ''
+    return dt.strftime(fmt)
 
 
 # ========== HELPER FUNCTIONS ==========
@@ -630,6 +639,9 @@ def mentor_delete_student(student_id):
         # Store username for flash message
         username = student.username
         
+        # Delete all student-staff assignments for this student
+        StudentStaffAssignment.query.filter_by(student_id=student.id).delete()
+        
         # Delete all notifications related to this student
         Notification.query.filter_by(user_id=student.id).delete()
         
@@ -1052,6 +1064,11 @@ def department_delete_user(user_id):
         return redirect(url_for('department_users'))
     
     try:
+        # Delete all student-staff assignments for this user
+        StudentStaffAssignment.query.filter_by(student_id=user.id).delete()
+        StudentStaffAssignment.query.filter_by(staff_id=user.id).delete()
+        
+        # Delete all notifications related to this user
         Notification.query.filter_by(user_id=user.id).delete()
         Comment.query.filter_by(user_id=user.id).delete()
         Complaint.query.filter_by(assigned_to=user.id).update({'assigned_to': None})
@@ -1188,6 +1205,108 @@ Thank you
         return redirect(url_for('department_users'))
     
     return render_template('add_department_staff.html', department=current_user.department)
+
+
+@app.route('/staff/my-assigned-students')
+@login_required
+def my_assigned_students():
+    """View students assigned to the current staff member"""
+    if current_user.role != 'staff':
+        abort(403)
+    
+    assignments = StudentStaffAssignment.query.filter_by(
+        staff_id=current_user.id,
+        department=current_user.department
+    ).all()
+    
+    students_data = []
+    for assignment in assignments:
+        # Get complaints related to this student
+        complaints = Complaint.query.filter_by(user_id=assignment.student_id).all()
+        students_data.append({
+            'student': assignment.student,
+            'assignment': assignment,
+            'complaints_count': len(complaints),
+            'pending_complaints': len([c for c in complaints if c.status == 'pending'])
+        })
+    
+    return render_template('my_assigned_students.html', students_data=students_data)
+
+
+# ========== STAFF STUDENT ASSIGNMENT ROUTES ==========
+
+@app.route('/staff/assign-students')
+@login_required
+def staff_assign_students():
+    """Staff can assign students to themselves"""
+    if current_user.role != 'staff':
+        abort(403)
+    
+    form = StaffStudentAssignmentForm(current_user.department)
+    
+    # Get current assignments for this staff member
+    assignments = StudentStaffAssignment.query.filter_by(
+        staff_id=current_user.id,
+        department=current_user.department
+    ).all()
+    
+    assigned_student_ids = [assignment.student_id for assignment in assignments]
+    
+    return render_template('staff_assign_students.html', form=form, assigned_student_ids=assigned_student_ids)
+
+
+@app.route('/staff/assign-students/submit', methods=['POST'])
+@login_required
+def staff_submit_assignment():
+    """Staff submits student assignments to themselves"""
+    if current_user.role != 'staff':
+        abort(403)
+    
+    form = StaffStudentAssignmentForm(current_user.department)
+    
+    if form.validate_on_submit():
+        student_ids = form.students.data
+        notes = form.notes.data
+        
+        try:
+            # Add assignments
+            for student_id in student_ids:
+                student = User.query.filter_by(id=student_id, department=current_user.department, role='student').first()
+                if not student:
+                    continue
+                
+                # Check if assignment already exists
+                existing = StudentStaffAssignment.query.filter_by(
+                    student_id=student_id, 
+                    staff_id=current_user.id, 
+                    department=current_user.department
+                ).first()
+                
+                if not existing:
+                    assignment = StudentStaffAssignment(
+                        student_id=student_id,
+                        staff_id=current_user.id,
+                        department=current_user.department,
+                        notes=notes
+                    )
+                    db.session.add(assignment)
+            
+            db.session.commit()
+            flash(f'Successfully assigned {len(student_ids)} student(s) to yourself', 'success')
+        
+        except IntegrityError as e:
+            db.session.rollback()
+            flash('One or more students were already assigned to you', 'warning')
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error assigning students: {str(e)}', 'danger')
+    
+    else:
+        for field, errors in form.errors.items():
+            for error in errors:
+                flash(f'{field}: {error}', 'danger')
+    
+    return redirect(url_for('staff_assign_students'))
 
 
 # ========== SUPER ADMIN USER MANAGEMENT ==========

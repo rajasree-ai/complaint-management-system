@@ -3,8 +3,8 @@ import os
 class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY', 'your-secret-key-here')
     
-    # Database
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL', 'postgresql://grievance_hub_user:Hge6c5HrVJfKCsIVGjmgiirVyBbKaFlD@dpg-d7b5gb94tr6s73c4ra20-a/grievance_hub')
+    # Database - Use PostgreSQL in production, SQLite locally
+    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or 'sqlite:///grievance_hub.db'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
     # Email Configuration

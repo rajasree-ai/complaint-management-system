@@ -1,0 +1,231 @@
+{% extends "base.html" %}
+
+{% block title %}My Assigned Students{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h2><i class="fas fa-user-graduate"></i> My Assigned Students</h2>
+                <div>
+                    <a href="{{ url_for('staff_dashboard') }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to Dashboard
+                    </a>
+                </div>
+            </div>
+            <hr>
+        </div>
+    </div>
+
+    <!-- Summary Stats -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-center shadow-sm">
+                <div class="card-body">
+                    <h6 class="text-muted">Total Assigned</h6>
+                    <h3 class="text-primary">{{ students_data|length }}</h3>
+                    <small class="text-muted">Students</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center shadow-sm">
+                <div class="card-body">
+                    <h6 class="text-muted">Total Complaints</h6>
+                    <h3 class="text-info">
+                        {% set total = 0 %}
+                        {% for item in students_data %}
+                            {% set total = total + item['complaints_count'] %}
+                        {% endfor %}
+                        {{ total }}
+                    </h3>
+                    <small class="text-muted">From all students</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center shadow-sm">
+                <div class="card-body">
+                    <h6 class="text-muted">Pending</h6>
+                    <h3 class="text-warning">
+                        {% set pending = 0 %}
+                        {% for item in students_data %}
+                            {% set pending = pending + item['pending_complaints'] %}
+                        {% endfor %}
+                        {{ pending }}
+                    </h3>
+                    <small class="text-muted">To address</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center shadow-sm">
+                <div class="card-body">
+                    <h6 class="text-muted">Response Rate</h6>
+                    <h3 class="text-success">
+                        {% set total_complaints = 0 %}
+                        {% set pending_complaints = 0 %}
+                        {% for item in students_data %}
+                            {% set total_complaints = total_complaints + item['complaints_count'] %}
+                            {% set pending_complaints = pending_complaints + item['pending_complaints'] %}
+                        {% endfor %}
+                        {% if total_complaints > 0 %}
+                            {{ ((total_complaints - pending_complaints) / total_complaints * 100)|int }}%
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </h3>
+                    <small class="text-muted">Addressed</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Students List -->
+    {% if students_data %}
+        <div class="row">
+            <div class="col-12">
+                <div class="card shadow">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-list"></i> Student Details
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover table-striped">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Student Name</th>
+                                        <th>Email</th>
+                                        <th>Year/Section</th>
+                                        <th>Contact</th>
+                                        <th>Complaints</th>
+                                        <th>Pending</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in students_data %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ item['student'].username }}</strong>
+                                        </td>
+                                        <td>
+                                            <a href="mailto:{{ item['student'].email }}">
+                                                {{ item['student'].email }}
+                                            </a>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-info">{{ item['student'].year }}</span>
+                                            <span class="badge bg-secondary">{{ item['student'].section }}</span>
+                                        </td>
+                                        <td>
+                                            {% if item['student'].phone %}
+                                                <a href="tel:{{ item['student'].phone }}">
+                                                    {{ item['student'].phone }}
+                                                </a>
+                                            {% else %}
+                                                <span class="text-muted">N/A</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-primary">{{ item['complaints_count'] }}</span>
+                                        </td>
+                                        <td>
+                                            {% if item['pending_complaints'] > 0 %}
+                                                <span class="badge bg-warning text-dark">{{ item['pending_complaints'] }}</span>
+                                            {% else %}
+                                                <span class="badge bg-success">0</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <a href="{{ url_for('mentor_student_profile', student_id=item['student'].id) }}" 
+                                               class="btn btn-sm btn-info">
+                                                <i class="fas fa-user"></i> Profile
+                                            </a>
+                                            <a href="{{ url_for('mentor_student_complaints', student_id=item['student'].id) }}" 
+                                               class="btn btn-sm btn-primary">
+                                                <i class="fas fa-list"></i> Complaints
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Student Details Section -->
+        <div class="row mt-4">
+            {% for item in students_data %}
+            <div class="col-md-6 mb-4">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0">{{ item['student'].username }}</h6>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-2">
+                            <strong>Email:</strong> 
+                            <a href="mailto:{{ item['student'].email }}">{{ item['student'].email }}</a>
+                        </p>
+                        <p class="mb-2">
+                            <strong>Year/Section:</strong> {{ item['student'].year }} {{ item['student'].section }}
+                        </p>
+                        <p class="mb-2">
+                            <strong>Phone:</strong> 
+                            {% if item['student'].phone %}
+                                <a href="tel:{{ item['student'].phone }}">{{ item['student'].phone }}</a>
+                            {% else %}
+                                <span class="text-muted">N/A</span>
+                            {% endif %}
+                        </p>
+                        <p class="mb-2">
+                            <strong>Parent/Guardian:</strong> {{ item['student'].parent_name or 'N/A' }}
+                        </p>
+                        <p class="mb-2">
+                            <strong>Parent Phone:</strong> {{ item['student'].parent_phone or 'N/A' }}
+                        </p>
+                        <hr>
+                        <p class="mb-2">
+                            <strong>Total Complaints:</strong> 
+                            <span class="badge bg-primary">{{ item['complaints_count'] }}</span>
+                        </p>
+                        <p class="mb-3">
+                            <strong>Pending Complaints:</strong> 
+                            <span class="badge bg-warning text-dark">{{ item['pending_complaints'] }}</span>
+                        </p>
+                        <div class="d-grid gap-2">
+                            <a href="{{ url_for('mentor_student_complaints', student_id=item['student'].id) }}" 
+                               class="btn btn-sm btn-primary">
+                                <i class="fas fa-list"></i> View Complaints
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+    {% else %}
+        <div class="alert alert-info" role="alert">
+            <i class="fas fa-info-circle"></i> 
+            <strong>No assignments yet.</strong> The HOD will assign students to you. Once assigned, they will appear here.
+        </div>
+    {% endif %}
+</div>
+
+<style>
+    .card {
+        border: none;
+        border-radius: 0.5rem;
+    }
+    .badge {
+        padding: 0.35rem 0.65rem;
+    }
+</style>
+{% endblock %}

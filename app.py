@@ -169,6 +169,103 @@ def can_delete_user(user):
     return True, "User can be deleted"
 
 
+def renumber_student_ids():
+    """Renumber student IDs to be sequential after deletion"""
+    try:
+        # Get all students ordered by current ID
+        students = User.query.filter_by(role='student').order_by(User.id).all()
+        
+        if not students:
+            return
+        
+        # Find the minimum student ID (students might not start from 1 due to other users)
+        min_student_id = min(student.id for student in students)
+        
+        # Create mapping of old ID to new sequential ID starting from min_student_id
+        student_id_map = {}
+        new_id = min_student_id
+        
+        for student in students:
+            old_id = student.id
+            if old_id != new_id:
+                student_id_map[old_id] = new_id
+            new_id += 1
+        
+        if not student_id_map:
+            return  # No renumbering needed
+        
+        # Disable foreign key checks for SQLite
+        db.session.execute(text('PRAGMA foreign_keys=OFF'))
+        
+        # First, update student IDs to temporary negative values to avoid conflicts
+        temp_id = -1
+        temp_map = {}
+        for old_id in student_id_map.keys():
+            temp_map[old_id] = temp_id
+            db.session.execute(
+                text('UPDATE "user" SET id = :temp_id WHERE id = :old_id AND role = "student"'),
+                {'temp_id': temp_id, 'old_id': old_id}
+            )
+            temp_id -= 1
+        
+        # Now update to final IDs
+        for old_id, new_id in student_id_map.items():
+            temp_id = temp_map[old_id]
+            db.session.execute(
+                text('UPDATE "user" SET id = :new_id WHERE id = :temp_id AND role = "student"'),
+                {'new_id': new_id, 'temp_id': temp_id}
+            )
+        
+        # Update all references to the old student IDs
+        for old_id, new_id in student_id_map.items():
+            # Update complaints user_id
+            db.session.execute(
+                text('UPDATE complaint SET user_id = :new_id WHERE user_id = :old_id'),
+                {'new_id': new_id, 'old_id': old_id}
+            )
+            # Update complaints assigned_to
+            db.session.execute(
+                text('UPDATE complaint SET assigned_to = :new_id WHERE assigned_to = :old_id'),
+                {'new_id': new_id, 'old_id': old_id}
+            )
+            # Update complaints mentor_id
+            db.session.execute(
+                text('UPDATE complaint SET mentor_id = :new_id WHERE mentor_id = :old_id'),
+                {'new_id': new_id, 'old_id': old_id}
+            )
+            # Update comments user_id
+            db.session.execute(
+                text('UPDATE comment SET user_id = :new_id WHERE user_id = :old_id'),
+                {'new_id': new_id, 'old_id': old_id}
+            )
+            # Update notifications user_id
+            db.session.execute(
+                text('UPDATE notification SET user_id = :new_id WHERE user_id = :old_id'),
+                {'new_id': new_id, 'old_id': old_id}
+            )
+            # Update student-staff assignments
+            db.session.execute(
+                text('UPDATE student_staff_assignment SET student_id = :new_id WHERE student_id = :old_id'),
+                {'new_id': new_id, 'old_id': old_id}
+            )
+            # Update department hod_id (if a student was somehow a hod)
+            db.session.execute(
+                text('UPDATE department SET hod_id = :new_id WHERE hod_id = :old_id'),
+                {'new_id': new_id, 'old_id': old_id}
+            )
+        
+        # Re-enable foreign key checks
+        db.session.execute(text('PRAGMA foreign_keys=ON'))
+        db.session.commit()
+        
+        print(f"Renumbered {len(student_id_map)} student IDs")
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error renumbering student IDs: {str(e)}")
+        raise
+
+
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
@@ -655,6 +752,9 @@ def mentor_delete_student(student_id):
         db.session.delete(student)
         db.session.commit()
         
+        # Renumber student IDs to maintain sequential order
+        renumber_student_ids()
+        
         flash(f'Student "{username}" has been deleted successfully!', 'success')
         
     except Exception as e:
@@ -1076,6 +1176,10 @@ def department_delete_user(user_id):
         Complaint.query.filter_by(user_id=user.id).delete()
         db.session.delete(user)
         db.session.commit()
+        
+        # Renumber student IDs if a student was deleted
+        if user.role == 'student':
+            renumber_student_ids()
         
         flash(f'User "{user.username}" has been deleted successfully!', 'success')
     except Exception as e:

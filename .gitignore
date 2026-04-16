@@ -1,11 +1,14 @@
-_pycache_/
-*.pyc
+# Secrets
 .env
-venv/
-# Files to hide from GitHub
-add_admin.py
 config.py
 
-# If they are in specific folders
-scripts/add_admin.py
-config/config.py
+# Python
+__pycache__/
+*.pyc
+venv/
+
+# VS Code
+.vscode/
+
+# OS
+.DS_Store

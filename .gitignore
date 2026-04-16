@@ -2,3 +2,10 @@ _pycache_/
 *.pyc
 .env
 venv/
+# Files to hide from GitHub
+add_admin.py
+config.py
+
+# If they are in specific folders
+scripts/add_admin.py
+config/config.py

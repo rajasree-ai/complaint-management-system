@@ -13,3 +13,7 @@ venv/
 
 # OS
 .DS_Store
+
+# Local cleanup artifacts
+_history_cleanup
+_history_cleanup.bundle

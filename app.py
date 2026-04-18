@@ -19,7 +19,7 @@ from models import User, Complaint, Comment, Notification, Department, PasswordR
 from forms import (
     RegistrationForm, LoginForm, ComplaintForm, CommentForm, UpdateComplaintForm,
     ForgotPasswordForm, ResetPasswordForm, DepartmentForm, 
-    RemoveStudentAssignmentForm, StaffStudentAssignmentForm
+    RemoveStudentAssignmentForm, StaffStudentAssignmentForm, UpdateProfileForm
 )
 from utils import (
     generate_complaint_id, send_email_notification, create_notification, 
@@ -119,6 +119,8 @@ def can_manage_user(user, target_user):
     if is_super_admin(user):
         return True
     if is_department_admin(user):
+        return target_user.department == user.department
+    if user.role in ['staff', 'mentor'] and target_user.role == 'student':
         return target_user.department == user.department
     return False
 
@@ -766,12 +768,12 @@ Thank you
 @login_required
 def mentor_student_profile(student_id):
     """Mentor can view student profile"""
-    if current_user.role != 'staff':
+    if current_user.role not in ['staff', 'mentor', 'hod', 'admin']:
         abort(403)
     
     student = User.query.get_or_404(student_id)
     
-    if student.department != current_user.department:
+    if current_user.role != 'admin' and student.department != current_user.department:
         abort(403)
     
     complaints = Complaint.query.filter_by(user_id=student.id).all()
@@ -1650,6 +1652,54 @@ def profile():
     return render_template('profile.html', user=current_user)
 
 
+@app.route('/profile/edit', methods=['GET', 'POST'])
+@login_required
+def edit_profile():
+    form = UpdateProfileForm(target_user=current_user, obj=current_user)
+    if form.validate_on_submit():
+        current_user.username = form.username.data
+        current_user.email = form.email.data
+        current_user.department = form.department.data
+        current_user.year = form.year.data
+        current_user.section = form.section.data
+        current_user.phone = form.phone.data
+        current_user.parent_name = form.parent_name.data
+        current_user.parent_phone = form.parent_phone.data
+        current_user.address = form.address.data
+        db.session.commit()
+        flash('Your profile has been updated successfully.', 'success')
+        return redirect(url_for('profile'))
+    return render_template('edit_profile.html', form=form, title='Edit Profile', heading='Edit Your Profile', cancel_url=url_for('profile'))
+
+
+@app.route('/student/<int:student_id>/edit', methods=['GET', 'POST'])
+@login_required
+def edit_student_profile(student_id):
+    student = User.query.get_or_404(student_id)
+    if current_user.id != student.id and not can_manage_user(current_user, student):
+        abort(403)
+
+    form = UpdateProfileForm(target_user=student, obj=student)
+    if form.validate_on_submit():
+        student.username = form.username.data
+        student.email = form.email.data
+        student.department = form.department.data
+        student.year = form.year.data
+        student.section = form.section.data
+        student.phone = form.phone.data
+        student.parent_name = form.parent_name.data
+        student.parent_phone = form.parent_phone.data
+        student.address = form.address.data
+        db.session.commit()
+        flash('Student profile has been updated successfully.', 'success')
+        if current_user.id == student.id:
+            return redirect(url_for('profile'))
+        return redirect(url_for('mentor_student_profile', student_id=student.id))
+
+    cancel_target = url_for('profile') if current_user.id == student.id else url_for('mentor_student_profile', student_id=student.id)
+    return render_template('edit_profile.html', form=form, title='Edit Student Profile', heading=f'Edit Profile: {student.username}', cancel_url=cancel_target)
+
+
 @app.route('/profile/delete', methods=['POST'])
 @login_required
 def delete_own_account():
@@ -1808,7 +1858,8 @@ def test_email():
 def utility_processor():
     return {
         'is_super_admin': is_super_admin,
-        'is_department_admin': is_department_admin
+        'is_department_admin': is_department_admin,
+        'can_manage_user': can_manage_user
     }
 
 

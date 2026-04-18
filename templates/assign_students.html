@@ -33,18 +33,26 @@
                             <label class="form-label">
                                 <strong>Select Students to Assign</strong>
                             </label>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" id="select_all_students" />
+                                <label class="form-check-label" for="select_all_students">
+                                    Select all students
+                                </label>
+                            </div>
                             <div style="height: auto; overflow-y: auto; border: 1px solid #ced4da; padding: 0; border-radius: 0.375rem;">
                                 {% if form.students.choices %}
                                     {% for value, label in form.students.choices %}
-                                        <div class="form-check p-2" style="border-bottom: 1px solid #f0f0f0;">
-                                            <input class="form-check-input" type="checkbox" 
-                                                   id="student_{{ value }}" 
-                                                   name="students" 
-                                                   value="{{ value }}"
-                                                   {% if form.students.data and value in form.students.data %}checked{% endif %}>
-                                            <label class="form-check-label" for="student_{{ value }}">
-                                                {{ label }}
-                                            </label>
+                                        <div class="student-row d-flex align-items-center justify-content-between px-3 py-2" style="border-bottom: 1px solid #e9ecef;">
+                                            <div class="d-flex align-items-center gap-3">
+                                                <input class="form-check-input" type="checkbox"
+                                                       id="student_{{ value }}"
+                                                       name="students"
+                                                       value="{{ value }}"
+                                                       {% if form.students.data and value in form.students.data %}checked{% endif %}>
+                                                <label class="form-check-label mb-0" for="student_{{ value }}">
+                                                    {{ label }}
+                                                </label>
+                                            </div>
                                         </div>
                                     {% endfor %}
                                 {% else %}
@@ -169,10 +177,40 @@
 <style>
     .form-check-input {
         cursor: pointer;
+        transform: scale(1.2);
+        margin-right: 0.75rem;
+        min-width: 1.25rem;
+        min-height: 1.25rem;
+        appearance: auto;
     }
     .form-check-label {
         cursor: pointer;
-        margin-left: 0.5rem;
+        margin-bottom: 0;
+        white-space: nowrap;
+    }
+    .student-row {
+        background: #ffffff;
+        transition: background 0.2s ease;
+    }
+    .student-row:hover {
+        background: #f8f9fa;
     }
 </style>
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const selectAll = document.getElementById('select_all_students');
+        const studentCheckboxes = document.querySelectorAll('input[name="students"]');
+
+        if (selectAll) {
+            selectAll.addEventListener('change', function() {
+                studentCheckboxes.forEach(function(checkbox) {
+                    checkbox.checked = selectAll.checked;
+                });
+            });
+        }
+    });
+</script>
+{% endblock %}
 {% endblock %}

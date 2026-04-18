@@ -142,3 +142,41 @@ class StaffStudentAssignmentForm(FlaskForm):
         # Get students in the department
         student_list = User.query.filter_by(department=department_name, role='student').all()
         self.students.choices = [(st.id, f"{st.username} - {st.year} {st.section}") for st in student_list]
+
+
+class UpdateProfileForm(FlaskForm):
+    username = StringField('Username', validators=[DataRequired(), Length(min=2, max=20)])
+    email = StringField('Email', validators=[DataRequired(), Email()])
+    department = SelectField('Department', choices=[], validators=[DataRequired()])
+    year = SelectField('Year', choices=[
+        ('1st Year', '1st Year'),
+        ('2nd Year', '2nd Year'),
+        ('3rd Year', '3rd Year'),
+        ('4th Year', '4th Year')
+    ], validators=[DataRequired()])
+    section = SelectField('Section', choices=[
+        ('A', 'A'),
+        ('B', 'B'),
+        ('C', 'C')
+    ], validators=[DataRequired()])
+    phone = StringField('Phone Number', validators=[Length(min=10, max=15)])
+    parent_name = StringField('Parent/Guardian Name')
+    parent_phone = StringField('Parent/Guardian Phone', validators=[Length(min=10, max=15)])
+    address = TextAreaField('Address')
+    submit = SubmitField('Save Changes')
+
+    def __init__(self, target_user=None, *args, **kwargs):
+        super(UpdateProfileForm, self).__init__(*args, **kwargs)
+        self.target_user = target_user
+        departments = Department.query.order_by(Department.name).all()
+        self.department.choices = [(d.name, d.name) for d in departments] if departments else [('', 'No departments available')]
+
+    def validate_username(self, username):
+        user = User.query.filter_by(username=username.data).first()
+        if user and (not self.target_user or user.id != self.target_user.id):
+            raise ValidationError('Username already exists.')
+
+    def validate_email(self, email):
+        user = User.query.filter_by(email=email.data).first()
+        if user and (not self.target_user or user.id != self.target_user.id):
+            raise ValidationError('Email already registered.')

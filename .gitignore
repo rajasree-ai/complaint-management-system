@@ -1,6 +1,7 @@
 # Secrets
 .env
 config.py
+add_admin.py
 
 # Python
 __pycache__/

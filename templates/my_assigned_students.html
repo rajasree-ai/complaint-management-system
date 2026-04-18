@@ -113,9 +113,7 @@
                                             <strong>{{ item['student'].username }}</strong>
                                         </td>
                                         <td>
-                                            <a href="mailto:{{ item['student'].email }}">
-                                                {{ item['student'].email }}
-                                            </a>
+                                            {{ item['student'].email }}
                                         </td>
                                         <td>
                                             <span class="badge bg-info">{{ item['student'].year }}</span>
@@ -170,8 +168,7 @@
                     </div>
                     <div class="card-body">
                         <p class="mb-2">
-                            <strong>Email:</strong> 
-                            <a href="mailto:{{ item['student'].email }}">{{ item['student'].email }}</a>
+                            <strong>Email:</strong> {{ item['student'].email }}
                         </p>
                         <p class="mb-2">
                             <strong>Year/Section:</strong> {{ item['student'].year }} {{ item['student'].section }}

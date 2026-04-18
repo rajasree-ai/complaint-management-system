@@ -83,14 +83,15 @@
                                     <th>Assigned To</th>
                                     <th>Date</th>
                                     <th>Actions</th>
-                                 </thead>
+                                </tr>
+                            </thead>
                             <tbody>
                                 {% for complaint in complaints %}
-                                 <tr>
-                                     <td><span class="badge bg-secondary">{{ complaint.complaint_id }}</span> \)
-                                     <td>{{ complaint.title }} \)
-                                     <td><span class="badge bg-light text-dark">{{ complaint.category }}</span> \)
-                                     <td>
+                                <tr>
+                                    <td><span class="badge bg-secondary">{{ complaint.complaint_id }}</span></td>
+                                    <td>{{ complaint.title }}</td>
+                                    <td><span class="badge bg-light text-dark">{{ complaint.category }}</span></td>
+                                    <td>
                                         {% if complaint.status == 'pending' %}
                                             <span class="badge bg-warning text-dark">Pending</span>
                                         {% elif complaint.status == 'in_progress' %}
@@ -100,8 +101,8 @@
                                         {% elif complaint.status == 'rejected' %}
                                             <span class="badge bg-danger">Rejected</span>
                                         {% endif %}
-                                      </td>
-                                      <td>
+                                    </td>
+                                    <td>
                                         {% if complaint.priority == 'high' %}
                                             <span class="badge bg-danger">High</span>
                                         {% elif complaint.priority == 'medium' %}
@@ -109,16 +110,16 @@
                                         {% else %}
                                             <span class="badge bg-info">Low</span>
                                         {% endif %}
-                                      </td>
-                                      <td>
+                                    </td>
+                                    <td>
                                         {% if complaint.assigned_staff %}
                                             <span class="badge bg-success">{{ complaint.assigned_staff.username }}</span>
                                         {% else %}
                                             <span class="text-muted">Not assigned</span>
                                         {% endif %}
-                                      </td>
-                                      <td>{{ complaint.created_at.strftime('%d-%m-%Y') }} </td>
-                                      <td>
+                                    </td>
+                                    <td>{{ complaint.created_at.strftime('%d-%m-%Y') }}</td>
+                                    <td>
                                         <div class="btn-group">
                                             <a href="{{ url_for('complaint_details', complaint_id=complaint.id) }}" 
                                                class="btn btn-sm btn-primary">
@@ -132,11 +133,11 @@
                                             </a>
                                             {% endif %}
                                         </div>
-                                      </td>
-                                 </tr>
+                                    </td>
+                                </tr>
                                 {% endfor %}
                             </tbody>
-                         </table>
+                        </table>
                     </div>
                 {% else %}
                     <div class="text-center py-5">

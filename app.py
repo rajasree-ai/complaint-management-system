@@ -149,6 +149,19 @@ def can_delete_complaint(user, complaint):
         return complaint.user_id == user.id and complaint.status in ['resolved', 'rejected']
 
 
+def get_complaint_or_404(complaint_ref):
+    """Resolve a complaint by database id first, then by display complaint_id."""
+    complaint = Complaint.query.get(complaint_ref)
+
+    if complaint is None:
+        complaint = Complaint.query.filter_by(complaint_id=str(complaint_ref)).first()
+
+    if complaint is None:
+        abort(404)
+
+    return complaint
+
+
 def get_hod_department_by_name(department_name):
     """Get department by name"""
     return Department.query.filter_by(name=department_name).first()
@@ -603,23 +616,74 @@ def mentor_students():
     if current_user.role != 'staff':
         abort(403)
     
+    # Get all students in the department
     students = User.query.filter_by(department=current_user.department, role='student').all()
     
-    student_stats = []
+    # Get assigned student IDs for this staff
+    assigned_assignments = StudentStaffAssignment.query.filter_by(
+        staff_id=current_user.id,
+        department=current_user.department
+    ).all()
+    assigned_student_ids = [assignment.student_id for assignment in assigned_assignments]
+    
+    # Get assigned students
+    assigned_students = [assignment.student for assignment in assigned_assignments]
+    
+    # Group all students by year and section
+    grouped_students = {}
     for student in students:
+        year_section = f"{student.year} {student.section}" if student.year and student.section else "Unassigned"
+        
+        if year_section not in grouped_students:
+            grouped_students[year_section] = []
+        
+        # Get complaint stats
         complaints = Complaint.query.filter_by(user_id=student.id).all()
         stats = calculate_complaint_stats(complaints)
         
-        student_stats.append({
+        student_data = {
             'user': student,
             'total_complaints': len(complaints),
             'pending': stats['pending'],
             'resolved': stats['resolved'],
-            'rejected': stats['rejected']
-        })
+            'is_assigned': student.id in assigned_student_ids
+        }
+        
+        grouped_students[year_section].append(student_data)
+    
+    # Group assigned students by year and section
+    grouped_assigned_students = {}
+    for student in assigned_students:
+        year_section = f"{student.year} {student.section}" if student.year and student.section else "Unassigned"
+        
+        if year_section not in grouped_assigned_students:
+            grouped_assigned_students[year_section] = []
+        
+        # Get complaint stats
+        complaints = Complaint.query.filter_by(user_id=student.id).all()
+        stats = calculate_complaint_stats(complaints)
+        
+        student_data = {
+            'user': student,
+            'total_complaints': len(complaints),
+            'pending': stats['pending'],
+            'resolved': stats['resolved']
+        }
+        
+        grouped_assigned_students[year_section].append(student_data)
+    
+    # Sort the groups
+    grouped_students = dict(sorted(grouped_students.items()))
+    grouped_assigned_students = dict(sorted(grouped_assigned_students.items()))
+    
+    # Create the assignment form
+    form = StaffStudentAssignmentForm(current_user.department)
     
     return render_template('mentor_students.html', 
-                         students=student_stats,
+                         grouped_students=grouped_students,
+                         grouped_assigned_students=grouped_assigned_students,
+                         assigned_student_ids=assigned_student_ids,
+                         form=form,
                          department=current_user.department,
                          mentor_name=current_user.username)
 
@@ -900,7 +964,7 @@ def view_complaints():
 @login_required
 
 def complaint_details(complaint_id):
-    complaint = Complaint.query.get_or_404(complaint_id)
+    complaint = get_complaint_or_404(complaint_id)
     
     if not can_view_complaint(current_user, complaint):
         abort(403)
@@ -990,7 +1054,7 @@ def complaint_details(complaint_id):
 @app.route('/complaint/<int:complaint_id>/resolve')
 @login_required
 def resolve_complaint(complaint_id):
-    complaint = Complaint.query.get_or_404(complaint_id)
+    complaint = get_complaint_or_404(complaint_id)
     
     if not can_update_complaint(current_user, complaint):
         abort(403)
@@ -1015,7 +1079,7 @@ def resolve_complaint(complaint_id):
 @app.route('/complaint/<int:complaint_id>/delete', methods=['POST'])
 @login_required
 def delete_complaint(complaint_id):
-    complaint = Complaint.query.get_or_404(complaint_id)
+    complaint = get_complaint_or_404(complaint_id)
     
     can_delete = False
     
@@ -1070,7 +1134,7 @@ def api_update_status(complaint_id):
     if current_user.role != 'staff':
         return jsonify({'error': 'Unauthorized'}), 403
     
-    complaint = Complaint.query.get_or_404(complaint_id)
+    complaint = get_complaint_or_404(complaint_id)
     
     if complaint.assigned_to != current_user.id and complaint.mentor_id != current_user.id:
         return jsonify({'error': 'Not assigned to you'}), 403

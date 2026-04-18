@@ -667,7 +667,8 @@ def mentor_students():
     
     # Group assigned students by year and section
     grouped_assigned_students = {}
-    for student in assigned_students:
+    for assignment in assigned_assignments:
+        student = assignment.student
         year_section = f"{student.year} {student.section}" if student.year and student.section else "Unassigned"
         
         if year_section not in grouped_assigned_students:
@@ -679,6 +680,7 @@ def mentor_students():
         
         student_data = {
             'user': student,
+            'assignment': assignment,
             'total_complaints': len(complaints),
             'pending': stats['pending'],
             'resolved': stats['resolved']
@@ -1489,6 +1491,103 @@ def staff_submit_assignment():
                 flash(f'{field}: {error}', 'danger')
     
     return redirect(url_for('staff_assign_students'))
+
+
+@app.route('/submit-student-assignment', methods=['POST'])
+@login_required
+def submit_student_assignment():
+    """HOD submits student assignments to staff members"""
+    if not is_department_admin(current_user):
+        abort(403)
+    
+    form = StudentStaffAssignmentForm(current_user.department)
+    
+    if form.validate_on_submit():
+        staff_id = form.staff_member.data
+        student_ids = form.students.data
+        notes = form.notes.data
+        
+        staff = User.query.filter_by(id=staff_id, department=current_user.department, role='staff').first()
+        if not staff:
+            flash('Selected staff member not found or not in your department', 'danger')
+            return redirect(url_for('assign_students'))
+        
+        try:
+            # Add assignments
+            for student_id in student_ids:
+                student = User.query.filter_by(id=student_id, department=current_user.department, role='student').first()
+                if not student:
+                    continue
+                
+                # Check if assignment already exists
+                existing = StudentStaffAssignment.query.filter_by(
+                    student_id=student_id, 
+                    staff_id=staff_id, 
+                    department=current_user.department
+                ).first()
+                
+                if not existing:
+                    assignment = StudentStaffAssignment(
+                        student_id=student_id,
+                        staff_id=staff_id,
+                        department=current_user.department,
+                        notes=notes
+                    )
+                    db.session.add(assignment)
+            
+            db.session.commit()
+            flash(f'Successfully assigned {len(student_ids)} student(s) to {staff.username}', 'success')
+        
+        except IntegrityError as e:
+            db.session.rollback()
+            flash('One or more students were already assigned to this staff member', 'warning')
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error assigning students: {str(e)}', 'danger')
+    
+    else:
+        for field, errors in form.errors.items():
+            for error in errors:
+                flash(f'{field}: {error}', 'danger')
+    
+    return redirect(url_for('assign_students'))
+
+
+@app.route('/remove-student-assignment/<int:assignment_id>', methods=['POST'])
+@login_required
+def remove_student_assignment(assignment_id):
+    """Remove a student assignment"""
+    assignment = StudentStaffAssignment.query.get_or_404(assignment_id)
+    
+    # Check permissions
+    if is_super_admin(current_user):
+        pass  # Super admin can remove any assignment
+    elif is_department_admin(current_user):
+        if assignment.department != current_user.department:
+            abort(403)
+    elif current_user.role in ['staff', 'mentor']:
+        if assignment.staff_id != current_user.id:
+            abort(403)
+    else:
+        abort(403)
+    
+    try:
+        student_name = assignment.student.username
+        staff_name = assignment.staff.username
+        db.session.delete(assignment)
+        db.session.commit()
+        flash(f'Successfully removed assignment of {student_name} from {staff_name}', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error removing assignment: {str(e)}', 'danger')
+    
+    # Redirect based on user role
+    if is_department_admin(current_user):
+        return redirect(url_for('assign_students'))
+    elif current_user.role in ['staff', 'mentor']:
+        return redirect(url_for('my_assigned_students'))
+    else:
+        return redirect(url_for('dashboard'))
 
 
 # ========== SUPER ADMIN USER MANAGEMENT ==========

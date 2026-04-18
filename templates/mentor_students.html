@@ -119,6 +119,11 @@
                                         <a href="{{ url_for('mentor_student_profile', student_id=student_data.user.id) }}" class="btn btn-secondary" title="View Profile">
                                             <i class="fas fa-user"></i>
                                         </a>
+                                        <form method="POST" action="{{ url_for('remove_student_assignment', assignment_id=student_data.assignment.id) }}" style="display: inline;">
+                                            <button type="submit" class="btn btn-warning" title="Remove Assignment" onclick="return confirm('Are you sure you want to remove this student assignment?');">
+                                                <i class="fas fa-user-minus"></i>
+                                            </button>
+                                        </form>
                                         <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteAssignedStudentModal{{ student_data.user.id }}" title="Delete Student">
                                             <i class="fas fa-trash-alt"></i>
                                         </button>

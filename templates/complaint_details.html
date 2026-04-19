@@ -99,9 +99,22 @@
             <div class="card-body">
                 {% if complaint.comments %}
                     {% for comment in complaint.comments|sort(attribute='created_at', reverse=true) %}
-                        <div class="comment mb-3 pb-3 border-bottom">
-                            <div class="d-flex justify-content-between">
-                                <strong>{{ comment.user.username }}</strong>
+                        <div class="comment mb-3 pb-3 border-bottom {% if comment.user.role == 'student' %}bg-light{% else %}bg-info bg-opacity-10{% endif %}">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div class="d-flex align-items-center">
+                                    <strong>{{ comment.user.username }}</strong>
+                                    {% if comment.user.role == 'student' %}
+                                        <span class="badge bg-primary ms-2">Student</span>
+                                    {% elif comment.user.role == 'staff' %}
+                                        <span class="badge bg-success ms-2">Staff</span>
+                                    {% elif comment.user.role == 'mentor' %}
+                                        <span class="badge bg-info ms-2">Mentor</span>
+                                    {% elif comment.user.role == 'hod' %}
+                                        <span class="badge bg-warning text-dark ms-2">HOD</span>
+                                    {% elif comment.user.role == 'admin' %}
+                                        <span class="badge bg-danger ms-2">Admin</span>
+                                    {% endif %}
+                                </div>
                                 <small class="text-muted">{{ comment.created_at.strftime('%Y-%m-%d %H:%M') }}</small>
                             </div>
                             <p class="mt-2">{{ comment.content }}</p>
@@ -118,7 +131,7 @@
                         {{ comment_form.content.label(class="form-label") }}
                         {{ comment_form.content(class="form-control", rows=3) }}
                     </div>
-                    {{ comment_form.submit(class="btn btn-primary") }}
+                    <button type="submit" name="submit_comment" class="btn btn-primary">{{ comment_form.submit.label.text }}</button>
                 </form>
             </div>
         </div>

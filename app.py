@@ -1013,13 +1013,46 @@ def complaint_details(complaint_id):
         db.session.add(comment)
         db.session.commit()
         
-        send_comment_notification(complaint, comment)
+        # Send email notification to complaint author (student) if commenter is not the author
+        if complaint.user_id != current_user.id:
+            send_comment_notification(complaint, comment, complaint.author)
         
+        # Send email notification to assigned staff if they exist and are not the commenter
+        if complaint.assigned_to and complaint.assigned_to != current_user.id:
+            assigned_staff = User.query.get(complaint.assigned_to)
+            if assigned_staff:
+                send_comment_notification(complaint, comment, assigned_staff)
+        
+        # Send email notification to mentor if they exist and are not the commenter
+        if complaint.mentor_id and complaint.mentor_id != current_user.id:
+            mentor = User.query.get(complaint.mentor_id)
+            if mentor:
+                send_comment_notification(complaint, comment, mentor)
+        
+        # Send in-app notification to complaint author if commenter is not the author
         if complaint.user_id != current_user.id:
             create_notification(
                 complaint.user_id,
                 complaint.id,
                 f'New comment on your complaint #{complaint.complaint_id}',
+                'comment'
+            )
+        
+        # Send in-app notification to assigned staff/mentor if they exist and are not the commenter
+        if complaint.assigned_to and complaint.assigned_to != current_user.id:
+            create_notification(
+                complaint.assigned_to,
+                complaint.id,
+                f'New comment on complaint #{complaint.complaint_id} by {complaint.author.username}',
+                'comment'
+            )
+        
+        # Send in-app notification to mentor if they exist and are not the commenter
+        if complaint.mentor_id and complaint.mentor_id != current_user.id:
+            create_notification(
+                complaint.mentor_id,
+                complaint.id,
+                f'New comment on complaint #{complaint.complaint_id} by {complaint.author.username}',
                 'comment'
             )
         

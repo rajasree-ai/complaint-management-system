@@ -78,13 +78,16 @@ Complaint Management System
     return send_email_notification(complaint.author.email, subject, body, mail)
 
 
-def send_comment_notification(complaint, comment, mail=None):
+def send_comment_notification(complaint, comment, recipient_user=None, mail=None):
     """Send email when a comment is added to a complaint"""
+    if recipient_user is None:
+        recipient_user = complaint.author
+    
     subject = f'New Comment on Complaint: {complaint.complaint_id}'
     body = f'''
-Dear {complaint.author.username},
+Dear {recipient_user.username},
 
-A new comment has been added to your complaint.
+A new comment has been added to complaint #{complaint.complaint_id}.
 
 Complaint: {complaint.title}
 Comment by: {comment.user.username}
@@ -96,7 +99,7 @@ View your complaint in your dashboard.
 Thank you,
 Complaint Management System
 '''
-    return send_email_notification(complaint.author.email, subject, body, mail)
+    return send_email_notification(recipient_user.email, subject, body, mail)
 
 
 def send_status_update_email(complaint, old_status, mail=None):

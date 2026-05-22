@@ -6,6 +6,7 @@ from sqlalchemy.exc import IntegrityError
 import logging
 import sys
 import os
+from urllib.parse import urlparse
 from dotenv import load_dotenv
 
 # Load environment variables from .env for local development
@@ -34,9 +35,15 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'change-this-secret-key')
 
 database_url = os.environ.get('DATABASE_URL') or 'sqlite:///grievance_hub.db'
+database_url = database_url.strip().strip('"').strip("'")
 if database_url.startswith('postgres://'):
     database_url = database_url.replace('postgres://', 'postgresql://', 1)
 app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+
+parsed_db = urlparse(database_url)
+if parsed_db.scheme in ('postgresql', 'postgres'):
+    print(f"DATABASE_URL host: {parsed_db.hostname}")
+    print(f"DATABASE_URL path: {parsed_db.path}")
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['MAIL_SERVER'] = os.environ.get('MAIL_SERVER', 'smtp.sendgrid.net')
@@ -303,56 +310,67 @@ def load_user(user_id):
     return User.query.get(int(user_id))
 
 
-# Create tables and admin user
-with app.app_context():
-    db.create_all()
+def initialize_database():
+    """Initialize database schema and default data safely."""
+    try:
+        with app.app_context():
+            db.create_all()
 
-    # Ensure legacy SQLite databases get the missing mentor_id column
-    inspector = inspect(db.engine)
-    if 'complaint' in inspector.get_table_names():
-        complaint_columns = [column['name'] for column in inspector.get_columns('complaint')]
-        if 'mentor_id' not in complaint_columns:
-            with db.engine.begin() as connection:
-                connection.execute(text('ALTER TABLE complaint ADD COLUMN mentor_id INTEGER'))
-            print('Added missing mentor_id column to complaint table')
-    
-    super_admin = User.query.filter_by(email='vanitha.sty3375@gmail.com').first()
-    if not super_admin:
-        super_admin = User(
-            username='vanitha',
-            email='vanitha.sty3375@gmail.com',
-            password=generate_password_hash('vanitha@75'),
-            role='admin',
-            department='Administration'
-        )
-        db.session.add(super_admin)
-        db.session.commit()
-        print("Super Admin account created!")
-    
-    if Department.query.count() == 0:
-        departments = [
-            'Computer Science and Engineering',
-            'Information Technology',
-            'Electronics and Communication Engineering',
-            'Electrical and Electronics Engineering',
-            'Mechanical Engineering',
-            'Civil Engineering',
-            'Artificial Intelligence and Data Science',
-            'Artificial Intelligence and Machine Learning',
-            'Computer Science and Design',
-            'Biomedical Engineering',
-            'Robotics and Automation',
-            'Chemical Engineering',
-            'Agricultural Engineering',
-            'Biotechnology',
-            'Cyber Security',
-            'MBA',
-            'MCA'
-        ]
-        for dept in departments:
-            db.session.add(Department(name=dept))
-        db.session.commit()
-        print(f"Added {len(departments)} departments")
+            # Ensure legacy SQLite databases get the missing mentor_id column
+            inspector = inspect(db.engine)
+            if 'complaint' in inspector.get_table_names():
+                complaint_columns = [column['name'] for column in inspector.get_columns('complaint')]
+                if 'mentor_id' not in complaint_columns:
+                    with db.engine.begin() as connection:
+                        connection.execute(text('ALTER TABLE complaint ADD COLUMN mentor_id INTEGER'))
+                    print('Added missing mentor_id column to complaint table')
+
+            super_admin = User.query.filter_by(email='vanitha.sty3375@gmail.com').first()
+            if not super_admin:
+                super_admin = User(
+                    username='vanitha',
+                    email='vanitha.sty3375@gmail.com',
+                    password=generate_password_hash('vanitha@75'),
+                    role='admin',
+                    department='Administration'
+                )
+                db.session.add(super_admin)
+                db.session.commit()
+                print("Super Admin account created!")
+
+            if Department.query.count() == 0:
+                departments = [
+                    'Computer Science and Engineering',
+                    'Information Technology',
+                    'Electronics and Communication Engineering',
+                    'Electrical and Electronics Engineering',
+                    'Mechanical Engineering',
+                    'Civil Engineering',
+                    'Artificial Intelligence and Data Science',
+                    'Artificial Intelligence and Machine Learning',
+                    'Computer Science and Design',
+                    'Biomedical Engineering',
+                    'Robotics and Automation',
+                    'Chemical Engineering',
+                    'Agricultural Engineering',
+                    'Biotechnology',
+                    'Cyber Security',
+                    'MBA',
+                    'MCA'
+                ]
+                for dept in departments:
+                    db.session.add(Department(name=dept))
+                db.session.commit()
+                print(f"Added {len(departments)} departments")
+
+    except Exception as e:
+        app.logger.error('Database initialization failed: %s', e, exc_info=True)
+        print('WARNING: Database initialization failed. Application startup continues, but database access may be unavailable.')
+
+
+@app.before_first_request
+def startup_db():
+    initialize_database()
 
 
 # ========== MAIN ROUTES ==========

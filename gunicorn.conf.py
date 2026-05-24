@@ -1,8 +1,10 @@
 # gunicorn.conf.py
 import multiprocessing
+import os
 
-# Bind to the port Render provides
-bind = "0.0.0.0:10000"
+# Bind to the port Render provides (use $PORT when available)
+port = os.environ.get('PORT', '10000')
+bind = f"0.0.0.0:{port}"
 
 # Reduce worker count for free tier
 workers = 1
@@ -24,4 +26,5 @@ errorlog = "-"
 loglevel = "info"
 
 # Preload app to save memory
-preload_app = True
+# Don't preload app to avoid import-time side effects (DB connections)
+preload_app = False

@@ -62,6 +62,19 @@ app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
 db.init_app(app)
 login_manager.init_app(app)
 
+# Compatibility shim: some Flask versions may remove `before_first_request`.
+# Provide a decorator that runs the wrapped function only once (on the first request).
+if not hasattr(app, 'before_first_request'):
+    def _before_first_request(func):
+        def _wrapper(*args, **kwargs):
+            if not getattr(app, '_got_first_request', False):
+                app._got_first_request = True
+                return func(*args, **kwargs)
+            return None
+        app.before_request(_wrapper)
+        return func
+    app.before_first_request = _before_first_request
+
 # Add Jinja2 filter for timezone conversion
 @app.template_filter('localtime')
 def localtime_filter(utc_dt):
@@ -368,9 +381,14 @@ def initialize_database():
         print('WARNING: Database initialization failed. Application startup continues, but database access may be unavailable.')
 
 
-@app.before_first_request
+db_initialized = False
+
+@app.before_request
 def startup_db():
-    initialize_database()
+    global db_initialized
+    if not db_initialized:
+        initialize_database()
+        db_initialized = True
 
 
 # ========== MAIN ROUTES ==========
